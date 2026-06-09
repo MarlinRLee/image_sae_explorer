@@ -15,8 +15,8 @@ A live deployment runs at https://huggingface.co/spaces/Ramnie/sae-explorer.
 Requires **Python 3.10+**. The demo runs on CPU; no GPU is required to serve.
 
 ```bash
-git clone https://github.com/MarlinRLee/sae-explorer.git
-cd sae-explorer
+git clone https://github.com/MarlinRLee/image_sae_explorer.git
+cd image_sae_explorer
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 bash scripts/run_explorer_local.sh
