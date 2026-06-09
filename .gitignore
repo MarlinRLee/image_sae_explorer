@@ -1,0 +1,25 @@
+*.out
+*.html
+*.csv
+*.checkpoints
+__pycache__
+.vscode
+old_evals
+paper_figures
+logs
+comparison_results
+centers
+analysis
+results
+analyze_feature_dominance.py
+checkpoints/
+models/
+explorer_data/
+memory/
+.claude/
+hf_space/
+
+# Demo runtime artifacts (downloaded / generated; not source)
+local_data/
+local_images/
+demo_data/
