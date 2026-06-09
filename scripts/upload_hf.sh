@@ -1,19 +1,9 @@
-#!/bin/bash -l
-#SBATCH --job-name=hf_upload
-#SBATCH --time=2:00:00
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=8g
-#SBATCH -p amdsmall
-#SBATCH --output=logs/hf_upload_%j.out
-
+#!/bin/bash
 # Upload explorer data to the Hugging Face dataset repos.
 #
-# Usage (submit from the repo root so the log path resolves):
-#   sbatch scripts/cluster/submit_hf_upload.sh                  # data-only (default, label-safe)
-#   sbatch --export=ALL,ALLOW_LABEL_OVERWRITE=1 \
-#          scripts/cluster/submit_hf_upload.sh full             # full upload
-#   bash scripts/cluster/submit_hf_upload.sh [data-only|full]   # also runs without SLURM
+# Usage:
+#   bash scripts/upload_hf.sh                                   # data-only (default, label-safe)
+#   ALLOW_LABEL_OVERWRITE=1 bash scripts/upload_hf.sh full      # full upload
 #
 # Modes
 #   data-only (default)
@@ -48,7 +38,7 @@ if [[ "$MODE" != "data-only" && "$MODE" != "full" ]]; then
     exit 1
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # ── Configure these (env vars override) ──────────────────────────────────────
 export HF_DATA_REPO="${HF_DATA_REPO:-Ramnie/sae-explorer-data}"
@@ -59,10 +49,6 @@ export IMAGES_DIR="${IMAGES_DIR:-${HOME}/hf_images}"
 export TAR_PATH="${TAR_PATH:-${HOME}/hf_images.tar.gz}"
 export REGISTRY="${REGISTRY:-${REPO_ROOT}/configs/models.yaml}"
 # ─────────────────────────────────────────────────────────────────────────────
-
-if command -v conda >/dev/null 2>&1; then
-    conda activate base 2>/dev/null || true
-fi
 
 if [ ! -f "$HF_TOKEN_FILE" ]; then
     echo "ERROR: Token file not found: $HF_TOKEN_FILE"

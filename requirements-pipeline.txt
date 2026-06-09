@@ -1,11 +1,10 @@
-# Extra dependencies for the training / precompute / analysis pipelines
-# (src/ plus the scripts/*.py generation + enrichment + eval scripts).
+# Extra dependencies for the training / precompute pipeline
+# (src/ plus the scripts/*.py generation + enrichment scripts).
 # Install on top of the demo deps:
 #   pip install -r requirements.txt -r requirements-pipeline.txt
 torchvision>=0.19          # image transforms in extraction / precompute
-Overcomplete>=0.1          # TopKSAE / RATopKSAE models + metrics
+Overcomplete>=0.1          # TopKSAE model
 umap-learn>=0.5            # feature UMAP (precompute_explorer_data.py)
-scipy>=1.10                # hierarchy/clustering in the ising plots
 einops>=0.7
 tqdm>=4.65
 lpips>=0.1.4               # interpretability-index precompute

@@ -82,7 +82,7 @@ dropdown picks it up. The data files behind each block follow the schema in
    the equivalent flags.)
 3. **Upload** the sidecar + heatmaps + SAE checkpoint to your HF dataset repo:
    ```bash
-   bash scripts/cluster/submit_hf_upload.sh            # data-only (label-safe)
+   bash scripts/upload_hf.sh                           # data-only (label-safe)
    ```
    (`full` mode also pushes SAE weights, label JSONs, and thumbnails — see the
    script header for the label-overwrite guard.)
@@ -172,16 +172,13 @@ scripts/
   run_explorer_local.sh      # local launcher (calls bootstrap_demo.py)
   precompute_*.py            # sidecar generation pipeline
   precompute_all.sh          # chains both precompute steps for one SAE
+  extract_activations.py     # backbone activation shards for training
   validate_registry.py       # sanity-check models.yaml against the .pt files
-  add_*.py, auto_interp_*.py # optional .pt enrichment (CLIP scores, interp
-                             # index, Gemini labels)
-  psychophysics_*.py,        # research/analysis evals behind the paper
-  precompute_ising.py,       # (not needed for the demo)
-  plot_ising_grouping_matrices.py
+  add_*.py, auto_interp_*.py # .pt enrichment (CLIP text search, interp-index
+                             # sorting, bulk Gemini labels)
+  build_demo_data.py         # synthetic no-download dataset (--synthetic)
+  upload_hf.sh               # push sidecars/weights/thumbnails to HF
   sync_hf_space.sh           # push canonical source to the HF Space repo
-  cluster/                   # SLURM wrappers for the pipeline (site-specific;
-                             # see scripts/cluster/README.md)
-archive/                     # one-off research/migration scripts (provenance only)
 hf_space/                    # production HF Space repo (gitignored)
 src/                         # training / precompute source (separate concern)
 requirements.txt             # demo runtime deps
