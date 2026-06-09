@@ -28,6 +28,7 @@ Open: http://localhost:5006/explorer_app
 import os
 import random
 import sys
+import threading
 import uuid
 
 import numpy as np
@@ -149,33 +150,15 @@ def _display_name(feat: int) -> str:
     return f"[auto] {a}" if a else ""
 
 
-# `compute_patch_activations` lives in explorer/activations.py and is
-# imported above; it lazy-loads backbone + SAE for on-demand inference
-# when the dataset has no patch_acts sidecar.
-
-
 # ---------- Image helpers ----------
 # The pure helpers (_resolve_image_path, _open_image, _load_image_from_ds,
-# pil_to_data_url, _pil_to_bokeh_rgba, ALPHA_JET/VIRIDIS, create_alpha_cmap,
-# _missing_image_warned) live in explorer/images.py and are imported at the
-# top of this file. Only `load_image` stays here because it closes over
-# `state.image_paths` (which is still module-level during the refactor).
-# `images.IMAGE_DIRS` and `images.THUMB` are configured below from `args`.
+# pil_to_data_url, alpha colormaps) live in explorer/images.py; per-session
+# image access goes through `ctx.load_image` (explorer/context.py).
+# `images.IMAGE_DIRS` and `images.THUMB` are module-level configuration,
+# set once here from `args`.
 _images_mod.IMAGE_DIRS = tuple(d for d in (args.image_dir, args.extra_image_dir) if d)
 _images_mod.THUMB = args.thumb_size
 THUMB = args.thumb_size  # local alias for legacy in-file references
-# `load_image` is imported from explorer.runtime above (it uses runtime.state).
-
-
-# Heatmap-overlay + hover-thumbnail rendering helpers all live in
-# explorer/rendering.py (imported above).
-
-
-# `make_image_grid_html`, `make_compare_aggregations_html`
-# live in explorer/html_views.py and are imported above.
-
-
-# `make_cross_sae_comparison_html` lives in explorer/html_views.py.
 
 
 # ---------- UMAP data source ----------
@@ -453,7 +436,42 @@ def _on_dataset_switch(attr, old, new):
     except ValueError:
         prev_feat = None
 
-    _ensure_loaded(idx)
+    # A lazy compare's first-ever load is a GB-scale torch.load; doing it
+    # inline would freeze the Tornado IOLoop (and every connected session).
+    # Load in a worker thread, then finish the switch on the doc thread.
+    if _all_datasets[idx].get('_lazy', False):
+        dataset_select.disabled = True
+        stats_div.text = f"<h3>Loading {_all_datasets[idx]['label']} ...</h3>"
+        doc = curdoc()
+
+        def _load_bg():
+            err = None
+            try:
+                _ensure_loaded(idx)
+            except Exception as e:
+                err = str(e)
+
+            def _done():
+                dataset_select.disabled = False
+                if err:
+                    stats_div.text = (f"<span style='color:#c00'>Failed to load "
+                                      f"{_all_datasets[idx]['label']}: {err[:200]}</span>")
+                    return
+                _finish_dataset_switch(idx, prev_feat)
+
+            doc.add_next_tick_callback(_done)
+
+        threading.Thread(target=_load_bg, daemon=True).start()
+        return
+
+    _finish_dataset_switch(idx, prev_feat)
+
+
+def _finish_dataset_switch(idx, prev_feat):
+    # Cancel any in-flight hover prewarm *before* rebinding state — a worker
+    # rendering from a mix of old and new tensors must never write into the
+    # fresh cache.
+    ui.prewarm_token += 1
     state.apply(idx)
 
     # Rebuild UMAP scatter
@@ -529,6 +547,13 @@ def _on_dataset_switch(attr, old, new):
     if view_select.value not in new_view_opts:
         view_select.value = VIEW_TOP
 
+    # Re-range the MEI zoom slider for the new dataset's patch grid — e.g.
+    # primary 14×14 vs compare 16×16. Without this, "full zoom" on a larger
+    # grid is unreachable and every MEI is silently cropped.
+    new_zoom_max = max(2, int(state.heatmap_patch_grid) if state.heatmap_patch_grid else 16)
+    zoom_slider.end = new_zoom_max
+    zoom_slider.value = new_zoom_max
+
     # Show/hide CLIP widgets and clear stale results for the new dataset.
     _clip_search['on_dataset_changed'](idx)
 
@@ -599,7 +624,7 @@ def _current_manual_author() -> str:
 
 # Auto-interp labels always get this fixed attribution — the model is the
 # author of the text, regardless of which operator triggered the call.
-_AUTO_INTERP_AUTHOR = "gemini-2.5-flash"
+_AUTO_INTERP_AUTHOR = _gemini.DEFAULT_MODEL
 
 
 # Gemini auto-interp button — widgets + worker thread + click handler
@@ -874,7 +899,11 @@ def update_feature_display(feature_idx):
         """Collect futures, dropping early-out None results."""
         return [r for r in (f.result() for f in futures) if r is not None]
 
-    def _render():
+    def _render(doc):
+        # Runs in a worker thread: submitting + awaiting all 27 renders can
+        # take seconds, and blocking the doc thread would freeze the Tornado
+        # IOLoop for every connected session. Only the final `_apply` (which
+        # touches Bokeh models) is posted back to the doc thread.
         # Bail out if the user has already clicked a different feature.
         if ui.render_token != my_token:
             return
@@ -897,37 +926,44 @@ def update_feature_display(feature_idx):
             return
 
         model_lbl = state.ds['label']
-        top_heatmap_div.text = make_image_grid_html(
+        top_html = make_image_grid_html(
             heatmap_infos, "Top Activation", "#2563a8",
             feat=feat, model_label=model_lbl, subtitle=VIEW_SUBTITLES[VIEW_TOP])
-        mean_heatmap_div.text = make_image_grid_html(
+        mean_html = make_image_grid_html(
             mean_hm_infos, "Mean Activation", "#1a7a4a",
             feat=feat, model_label=model_lbl, subtitle=VIEW_SUBTITLES[VIEW_MEAN])
-        crop_heatmap_div.text = make_image_grid_html(
+        crop_html = make_image_grid_html(
             crop_hm_infos, "Crop Avg (top-8 patches)", "#c2691a",
             feat=feat, model_label=model_lbl, subtitle=VIEW_SUBTITLES[VIEW_CROP])
-
         # Side-by-side aggregation comparison (paper-ready screenshot view)
-        compare_agg_div.text = make_compare_aggregations_html(
-            heatmap_infos, mean_hm_infos, feat,
-            model_label=state.ds['label'])
+        compare_html = make_compare_aggregations_html(
+            heatmap_infos, mean_hm_infos, feat, model_label=model_lbl)
 
-        _update_view_visibility()
+        def _apply():
+            if ui.render_token != my_token:
+                return
+            top_heatmap_div.text  = top_html
+            mean_heatmap_div.text = mean_html
+            crop_heatmap_div.text = crop_html
+            compare_agg_div.text  = compare_html
+            _update_view_visibility()
 
-        # Auto-Gemini: when --auto-gemini is passed and the user has
-        # provided a Google API key, fire an auto-interp call for any
-        # selected feature that has neither a manual name nor an existing
-        # auto-interp label. Off by default — enable per session with
-        # `--auto-gemini` on the bokeh-serve command line. Skipped while
-        # another Gemini call is in flight (button disabled).
-        if (args.auto_gemini
-                and _gemini_api_key
-                and not gemini_btn.disabled
-                and feat not in state.auto_interp_names
-                and feat not in state.feature_names):
-            _on_gemini_click()
+            # Auto-Gemini: when --auto-gemini is passed and the user has
+            # provided a Google API key, fire an auto-interp call for any
+            # selected feature that has neither a manual name nor an existing
+            # auto-interp label. Off by default — enable per session with
+            # `--auto-gemini` on the bokeh-serve command line. Skipped while
+            # another Gemini call is in flight (button disabled).
+            if (args.auto_gemini
+                    and _gemini_api_key
+                    and not gemini_btn.disabled
+                    and feat not in state.auto_interp_names
+                    and feat not in state.feature_names):
+                _on_gemini_click()
 
-    curdoc().add_next_tick_callback(_render)
+        doc.add_next_tick_callback(_apply)
+
+    threading.Thread(target=_render, args=(curdoc(),), daemon=True).start()
 
 
 # ---------- View visibility ----------

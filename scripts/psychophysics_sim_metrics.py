@@ -133,7 +133,8 @@ def main():
     p.add_argument("--top-k", type=int, default=160)
     p.add_argument("--image-dir", default=None)
     p.add_argument("--extra-image-dir", action="append", default=[])
-    p.add_argument("--recursive", action="store_true", default=True)
+    p.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True,
+                   help="Recurse into image-dir subdirectories (--no-recursive to disable)")
     p.add_argument("--pool-size", type=int, default=6000)
     p.add_argument("--num-workers", type=int, default=8)
     p.add_argument("--batch-size", type=int, default=64)

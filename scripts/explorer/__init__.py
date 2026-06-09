@@ -1,7 +1,10 @@
 """SAE Feature Explorer — modular package backing scripts/explorer_app.py.
 
-This package is being incrementally extracted from the formerly-monolithic
-scripts/explorer_app.py. See README.md and the plan file for the full
-target layout. During the refactor, the entry script
-(scripts/explorer_app.py) imports from here and progressively shrinks.
+The entry script composes the pieces: per-session state and CLI parsing
+(``state``), the context object threaded into every panel (``context``),
+registry/data loading (``registry``, ``loaders``), pure image + HTML helpers
+(``images``, ``rendering``, ``html_views``), persistence of feature labels
+(``persistence``), on-demand inference (``activations``, ``clip_loader``),
+Gemini auto-labeling (``gemini``), classifier export (``classifier_export``),
+and the UI panels (``panels/``).
 """

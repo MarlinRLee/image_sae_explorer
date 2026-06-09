@@ -4,8 +4,8 @@
 # and the HF Space entrypoint read this file via scripts/bootstrap_demo.py
 # and the explorer reads it via --registry.
 #
-# To add a new model: append one block to `models:` (see "Add a new model
-# to the demo" in README.md for the full pipeline). Exactly one entry must
+# To add a new model: append one block to `models:` (see "Add your own
+# SAE + data" in README.md for the full pipeline). Exactly one entry must
 # have `primary: true`.
 
 defaults:

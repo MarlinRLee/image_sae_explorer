@@ -73,4 +73,4 @@ python "$HERE/precompute_heatmaps.py" \
   "${LAYER_ARGS[@]}" "${EXTRA_DIR_ARGS[@]}"
 
 echo "==> Done. Upload $OUTPUT + ${OUTPUT%.pt}_heatmaps.pt + the SAE .pth to your"
-echo "    HF dataset repo (see scripts/submit_hf_upload.sh), then add a registry block."
+echo "    HF dataset repo (see scripts/cluster/submit_hf_upload.sh), then add a registry block."

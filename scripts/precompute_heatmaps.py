@@ -36,28 +36,28 @@ Usage — one invocation per explorer_data file:
     # Final-layer DINOv3 spatial SAE:
     python precompute_heatmaps.py \\
         --data ../explorer_data_d32000_k160_val.pt \\
-        --sae-path ../trained_models/sae_1_SI-SAE_d32000_k160_per_init0.1_state_dict.pth \\
-        --image-dir /scratch.global/lee02328/val \\
-        --extra-image-dir /scratch.global/lee02328/coco/val2017
+        --sae-path models/sae_d32000_k160_state_dict.pth \\
+        --image-dir /path/to/val \\
+        --extra-image-dir /path/to/coco/val2017
 
     # Intermediate-layer DINOv3 (e.g. layer 18):
     python precompute_heatmaps.py \\
         --data ../explorer_data_18.pt \\
-        --sae-path ../trained_models_layer18/sae_1_SI-SAE_d20000_k80_per_init0.1_state_dict.pth \\
-        --image-dir /scratch.global/lee02328/val \\
+        --sae-path models/sae_d20000_k80_state_dict.pth \\
+        --image-dir /path/to/val \\
         --layer 18
 
     # CLIP spatial SAE:
     python precompute_heatmaps.py \\
         --data ../explorer_data_clip_spatial_d32000_k160_val.pt \\
-        --sae-path ../trained_models_clip_spatial/sae_1_SI-SAE_d32000_k160_per_init0.1_state_dict.pth \\
-        --image-dir /scratch.global/lee02328/val
+        --sae-path models/sae_clip_d32000_k160_state_dict.pth \\
+        --image-dir /path/to/val
 
     # CLIP intermediate layer (e.g. layer 16):
     python precompute_heatmaps.py \\
         --data ../explorer_data_clip_layer16_val.pt \\
-        --sae-path ../trained_models_clip_layer16/sae_1_SI-SAE_d32000_k160_per_init0.1_state_dict.pth \\
-        --image-dir /scratch.global/lee02328/val \\
+        --sae-path models/sae_clip_l16_d32000_k160_state_dict.pth \\
+        --image-dir /path/to/val \\
         --layer 16
 """
 
@@ -112,7 +112,7 @@ def parse_args():
                         "SAE was trained on CLS features.  The actual patch_grid is stored "
                         "in the output sidecar so the explorer app can render them correctly.")
     p.add_argument("--patch-norm-stats", type=str, default=None,
-                   help="Path to dataset_stats.pt from load_imagenet_features_patch_norm.py. "
+                   help="Path to the patch-norm extraction (positional_mean / positional_std). "
                         "If set, applies per-patch-position normalization "
                         "(subtract positional_mean, divide by std) to backbone tokens "
                         "before feeding them to the SAE.")

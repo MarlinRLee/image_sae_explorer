@@ -1,25 +1,11 @@
 import os
-import signal
 import torch
 import torch.optim as optim
 
 
-class GracefulKiller:
-    """Handle SIGTERM/SIGINT for graceful shutdown."""
-
-    def __init__(self):
-        self.kill_now = False
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
-
-    def exit_gracefully(self, signum, frame):
-        print("\n[Signal] Received shutdown signal. Will save checkpoint after current epoch...")
-        self.kill_now = True
-
-
-def get_checkpoint_dir(base_dir, model_type, run_suffix=""):
-    """Get checkpoint directory with optional model parameters suffix."""
-    checkpoint_dir = os.path.join(base_dir, f"checkpoints_{model_type}{run_suffix}")
+def get_checkpoint_dir(base_dir, run_suffix=""):
+    """Get checkpoint directory with the model-parameters suffix."""
+    checkpoint_dir = os.path.join(base_dir, f"sae{run_suffix}")
     os.makedirs(checkpoint_dir, exist_ok=True)
     return checkpoint_dir
 

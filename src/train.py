@@ -370,7 +370,7 @@ def validate(model, val_loader, criterion, device, omnipresent_threshold=0.9):
 
 def train_sae(model, dataloader, criterion, optimizer, scheduler=None,
               nb_epochs=20, clip_grad=1.0, monitoring=1, device="cpu", sae_index=1,
-              checkpoint_dir=None, checkpoint_every_n_epochs=1, model_type=None,
+              checkpoint_dir=None, checkpoint_every_n_epochs=1,
               val_loader=None, early_stopping_patience=None, early_stopping_min_delta=0.0,
               use_mixed_precision=False,
               reanimate_coeff=0.0, resample_every_n_epochs=0,
@@ -404,8 +404,6 @@ def train_sae(model, dataloader, criterion, optimizer, scheduler=None,
         Directory to save checkpoints.
     checkpoint_every_n_epochs : int
         Save checkpoint every N epochs.
-    model_type : str, optional
-        Type of model (used for SI-SAE freezing).
     val_loader : DataLoader, optional
         Validation data loader. If provided, validation will be run each epoch.
     early_stopping_patience : int, optional
@@ -421,7 +419,8 @@ def train_sae(model, dataloader, criterion, optimizer, scheduler=None,
     dead_threshold : float
         Frequency below which a feature is considered dead.
     reanimate_after_epoch : int
-        Don't reanimate before this epoch (aligns with SI-SAE freeze period).
+        Don't reanimate before this epoch (early epochs naturally have many
+        not-yet-fired features that would be misclassified as dead).
 
     Returns
     -------
@@ -486,20 +485,7 @@ def train_sae(model, dataloader, criterion, optimizer, scheduler=None,
     if resample_every_n_epochs > 0:
         print(f"  Weight resampling enabled (every {resample_every_n_epochs} epochs, after epoch {reanimate_after_epoch})")
 
-    frozen = False
-    if model_type == "SI-SAE" and start_epoch < 2:
-        for param in model.dictionary.parameters():
-            param.requires_grad = False
-        frozen = True
-            
-            
     for epoch in range(start_epoch, nb_epochs):
-        if frozen and epoch >= 2:
-            for param in model.dictionary.parameters():
-                param.requires_grad = True
-            print("unfreeze dict", flush = True)
-            frozen = False
-            
         model.train()
 
         start_time = time.time()

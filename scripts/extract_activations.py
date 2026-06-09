@@ -12,23 +12,23 @@ Usage
 -----
     # DINOv3 spatial (final layer):
     python extract_activations.py --backbone dinov3 \\
-        --data_dir /scratch.global/lee02328/train \\
-        --output_dir /scratch.global/lee02328/data/DINOV3/train_spatial/final
+        --data_dir /path/to/train \\
+        --output_dir /path/to/data/DINOV3/train_spatial/final
 
     # DINOv3 intermediate layer 18:
     python extract_activations.py --backbone dinov3 --layer 18 \\
-        --data_dir /scratch.global/lee02328/train \\
-        --output_dir /scratch.global/lee02328/data/DINOV3/train_layer18/final
+        --data_dir /path/to/train \\
+        --output_dir /path/to/data/DINOV3/train_layer18/final
 
     # CLIP spatial:
     python extract_activations.py --backbone clip \\
-        --data_dir /scratch.global/lee02328/train \\
-        --output_dir /scratch.global/lee02328/data/CLIP/train_spatial/final
+        --data_dir /path/to/train \\
+        --output_dir /path/to/data/CLIP/train_spatial/final
 
     # CLIP both (spatial + CLS to separate subdirs in one pass):
     python extract_activations.py --backbone clip --token-type both \\
-        --data_dir /scratch.global/lee02328/train \\
-        --output_dir /scratch.global/lee02328/data/CLIP/train \\
+        --data_dir /path/to/train \\
+        --output_dir /path/to/data/CLIP/train \\
         --images_per_shard 2816
 """
 

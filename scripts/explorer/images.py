@@ -42,14 +42,13 @@ def create_alpha_cmap(base: str = 'jet'):
     """Return a copy of ``base`` colormap with linear-alpha replacing solid
     alpha. Used so heatmap overlays fade with intensity instead of clipping
     abruptly at zero."""
-    base_cmap = plt.cm.get_cmap(base)
+    base_cmap = matplotlib.colormaps[base]
     colors = base_cmap(np.arange(base_cmap.N))
     colors[:, -1] = np.linspace(0.0, 1.0, base_cmap.N)
     return mcolors.LinearSegmentedColormap.from_list('alpha_cmap', colors)
 
 
 ALPHA_JET = create_alpha_cmap('jet')
-ALPHA_VIRIDIS = create_alpha_cmap('viridis')
 
 
 # ---------- Path resolution ----------

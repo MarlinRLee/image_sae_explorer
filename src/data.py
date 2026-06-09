@@ -5,6 +5,15 @@ import torch
 from torch.utils.data import IterableDataset, DataLoader, get_worker_info
 
 class ShardedDataset(IterableDataset):
+    """Streams shard_*.pt activation files as pre-batched chunks.
+
+    Each worker handles a disjoint stripe of shards and yields tensors of
+    ``batch_size_per_worker`` rows. The DataLoader is configured with
+    ``batch_size=num_workers`` and a concatenating collate_fn, so one
+    "DataLoader batch" stitches together one chunk from each worker to reach
+    the full batch size with minimal Python overhead.
+    """
+
     def __init__(self, shard_dir, batch_size_per_worker, shuffle_shards=True, shuffle_in_shard=True, subset_fraction=1.0):
         super().__init__()
         self.shard_dir = shard_dir
@@ -36,18 +45,19 @@ class ShardedDataset(IterableDataset):
             try:
                 # Load to CPU, keep in fp16 if saved that way
                 data = torch.load(self.shard_files[shard_idx], map_location='cpu', weights_only=True)
-                
-                if self.shuffle_in_shard:
-                    idx = torch.randperm(data.shape[0])
-                    data = data[idx]
-
-                total_samples = data.shape[0]
-                # Yield chunks to reduce Python overhead
-                for i in range(0, total_samples, self.batch_size_per_worker):
-                    yield data[i : i + self.batch_size_per_worker]
-                    
             except Exception as e:
-                print(f"Error loading {self.shard_files[shard_idx]}: {e}")
+                # A corrupt/truncated shard must stop the run — silently
+                # skipping it would train on a reduced dataset with no signal.
+                raise RuntimeError(f"Failed to load shard {self.shard_files[shard_idx]}") from e
+
+            if self.shuffle_in_shard:
+                idx = torch.randperm(data.shape[0])
+                data = data[idx]
+
+            total_samples = data.shape[0]
+            # Yield chunks to reduce Python overhead
+            for i in range(0, total_samples, self.batch_size_per_worker):
+                yield data[i : i + self.batch_size_per_worker]
 
 class DeviceDataLoader:
     """Wraps a dataloader to move batches to device."""
@@ -63,8 +73,12 @@ class DeviceDataLoader:
     def __len__(self):
         return len(self.dataloader)
 
-# --- 4. The Setup Function ---
-def create_dataloader(shard_dir, total_batch_size, num_workers=9, prefetch_factor=6, 
+def fast_collate(batch_list):
+    """Concatenate per-worker chunks into one full batch (see ShardedDataset)."""
+    return torch.cat(batch_list, dim=0)
+
+
+def create_dataloader(shard_dir, total_batch_size, num_workers=9, prefetch_factor=6,
                       subset_fraction=1.0, shuffle=True):
     """
     Create a dataloader for sharded data.
@@ -102,9 +116,6 @@ def create_dataloader(shard_dir, total_batch_size, num_workers=9, prefetch_facto
         shuffle_in_shard=shuffle,
         subset_fraction=subset_fraction
     )
-    
-    def fast_collate(batch_list):
-        return torch.cat(batch_list, dim=0)
 
     return DataLoader(
         dataset,
@@ -154,9 +165,6 @@ def create_val_dataloader(shard_dir, total_batch_size, num_workers=4, prefetch_f
         shuffle_in_shard=False,  # Deterministic order
         subset_fraction=subset_fraction
     )
-    
-    def fast_collate(batch_list):
-        return torch.cat(batch_list, dim=0)
 
     return DataLoader(
         dataset,

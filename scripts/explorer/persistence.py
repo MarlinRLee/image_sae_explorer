@@ -185,6 +185,10 @@ def _schedule_hf_push(file_paths, ui) -> None:
                 # cold start, or alongside a concurrent editor) cannot
                 # drop keys that exist on the remote. Local wins on
                 # conflict because the user just edited those entries.
+                # The merge is uploaded from memory — never written back
+                # to disk from this thread, which would race a concurrent
+                # doc-thread save and clobber it.
+                content = fp
                 remote = _fetch_remote_dict(
                     os.path.basename(fp), hf_repo, hf_token,
                 )
@@ -200,9 +204,9 @@ def _schedule_hf_push(file_paths, ui) -> None:
                         remote, local,
                         is_history=_is_history_path(fp), winner='b',
                     )
-                    _save_json_atomic(fp, merged)
+                    content = json.dumps(merged, indent=2).encode()
                 upload_file(
-                    path_or_fileobj=fp,
+                    path_or_fileobj=content,
                     path_in_repo=os.path.basename(fp),
                     repo_id=hf_repo,
                     repo_type="dataset",

@@ -16,9 +16,11 @@ Tests can call ``build()`` and inspect the returned widgets without
 driving any actual CLIP load.
 """
 
+import threading
 from typing import Callable, Optional
 
 import torch
+from bokeh.io import curdoc
 from bokeh.layouts import column, row
 from bokeh.models import (Button, ColumnDataSource, DataTable, Div,
                           NumberFormatter, TableColumn, TextInput)
@@ -70,6 +72,27 @@ def build(ctx, display_name: Callable[[int], str],
         width=470,
     )
 
+    def _publish_results(scores_vec, query, top_k):
+        """Fill the result table from a per-feature score vector (doc thread)."""
+        state = ctx.state
+        top_indices = torch.topk(scores_vec, k=min(top_k, len(scores_vec))).indices.tolist()
+        # Clear prior selection before reassigning data — otherwise the
+        # DataTable can fail to repaint its cells (Bokeh 3.x quirk: stale
+        # selection state keeps the table visually frozen even though
+        # .data is updated and row clicks resolve to the new feature_idx).
+        clip_result_source.selected.indices = []
+        clip_result_source.data = dict(
+            feature_idx=top_indices,
+            clip_score=[float(scores_vec[i]) for i in top_indices],
+            frequency=[int(state.feature_frequency[i].item()) for i in top_indices],
+            mean_act=[float(state.feature_mean_act[i].item()) for i in top_indices],
+            name=[display_name(int(i)) for i in top_indices],
+        )
+        clip_result_div.text = (
+            f'<span style="color:#1a6faf"><b>{len(top_indices)}</b> features for '
+            f'&ldquo;{query}&rdquo;</span>'
+        )
+
     def _do_search():
         state = ctx.state
         if not state.has_clip:
@@ -91,46 +114,46 @@ def build(ctx, display_name: Callable[[int], str],
         vocab_lower = [v.lower() for v in (state.clip_vocab or [])]
         if state.clip_vocab and query.lower() in vocab_lower:
             col = vocab_lower.index(query.lower())
-            scores_vec = state.clip_scores_f32[:, col]
+            _publish_results(state.clip_scores_f32[:, col], query, top_k)
         elif state.clip_embeds is not None:
+            # Encoding an out-of-vocab query may lazy-load the whole CLIP
+            # model (tens of seconds on CPU) — run it in a worker thread so
+            # the IOLoop (and the "Encoding..." status itself) isn't frozen.
             clip_result_div.text = "<i>Encoding query with CLIP...</i>"
-            try:
-                # Imported here so tests don't need transformers on path.
-                import sys, os
-                _src = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')
-                if _src not in sys.path:
-                    sys.path.insert(0, _src)
-                from clip_utils import compute_text_embeddings
-                clip_m, clip_p, clip_dev = get_clip(ctx)
-                q_embed = compute_text_embeddings([query], clip_m, clip_p, clip_dev)
-                scores_vec = (state.clip_embeds.float() @ q_embed.T).squeeze(-1)
-            except Exception as exc:
-                clip_result_div.text = f"<span style='color:#c00'>CLIP error: {exc}</span>"
-                return
+            clip_search_btn.disabled = True
+            clip_embeds = state.clip_embeds
+            doc = curdoc()
+
+            def _encode_bg():
+                err = scores_vec = None
+                try:
+                    # Imported here so tests don't need transformers on path.
+                    import sys, os
+                    _src = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')
+                    if _src not in sys.path:
+                        sys.path.insert(0, _src)
+                    from clip_utils import compute_text_embeddings
+                    clip_m, clip_p, clip_dev = get_clip(ctx)
+                    q_embed = compute_text_embeddings([query], clip_m, clip_p, clip_dev)
+                    scores_vec = (clip_embeds.float() @ q_embed.T).squeeze(-1)
+                except Exception as exc:
+                    err = str(exc)
+
+                def _apply():
+                    clip_search_btn.disabled = False
+                    if err is not None:
+                        clip_result_div.text = f"<span style='color:#c00'>CLIP error: {err}</span>"
+                        return
+                    _publish_results(scores_vec, query, top_k)
+
+                doc.add_next_tick_callback(_apply)
+
+            threading.Thread(target=_encode_bg, daemon=True).start()
         else:
             clip_result_div.text = (
                 f"<span style='color:#c00'>Query not in vocab and no feature embeddings "
                 f"available. Try one of: {', '.join((state.clip_vocab or [])[:8])}...</span>"
             )
-            return
-
-        top_indices = torch.topk(scores_vec, k=min(top_k, len(scores_vec))).indices.tolist()
-        # Clear prior selection before reassigning data — otherwise the
-        # DataTable can fail to repaint its cells (Bokeh 3.x quirk: stale
-        # selection state keeps the table visually frozen even though
-        # .data is updated and row clicks resolve to the new feature_idx).
-        clip_result_source.selected.indices = []
-        clip_result_source.data = dict(
-            feature_idx=top_indices,
-            clip_score=[float(scores_vec[i]) for i in top_indices],
-            frequency=[int(state.feature_frequency[i].item()) for i in top_indices],
-            mean_act=[float(state.feature_mean_act[i].item()) for i in top_indices],
-            name=[display_name(int(i)) for i in top_indices],
-        )
-        clip_result_div.text = (
-            f'<span style="color:#1a6faf"><b>{len(top_indices)}</b> features for '
-            f'&ldquo;{query}&rdquo;</span>'
-        )
 
     clip_search_btn.on_click(_do_search)
 

@@ -1,6 +1,6 @@
 # Runtime dependencies for the SAE Feature Explorer demo (scripts/explorer_app.py).
-# These are the deps needed to LAUNCH the explorer — training and precompute
-# pipelines have their own (heavier) requirements.
+# These are the deps needed to LAUNCH the explorer — the training and
+# precompute pipelines additionally need requirements-pipeline.txt.
 
 # --- Core (always required) ---
 bokeh>=3.0,<4              # value_throttled (used by zoom + alpha sliders)
@@ -8,7 +8,7 @@ torch>=2.4,<3              # weights_only kwarg on torch.load
 numpy>=1.24,<3
 opencv-python>=4.7         # cv2.resize for heatmap upsampling
 pillow>=10.0               # Image.Resampling.BILINEAR
-matplotlib>=3.7            # ALPHA_JET / ALPHA_VIRIDIS colormaps (Agg backend, no GUI)
+matplotlib>=3.7            # ALPHA_JET colormap (Agg backend, no GUI)
 pyyaml>=6.0                # configs/models.yaml registry parsing
 
 # --- Optional: leave installed for the standard demo experience ---
@@ -23,7 +23,8 @@ transformers>=4.40,<5
 # button is auto-disabled otherwise.
 google-genai>=1.0
 
-# Interpretability Index precompute (scripts/add_interpretability_index.py).
-# Only needed to (re)compute the per-feature LPIPS II offline; the explorer
-# reads the precomputed 'interp_index' key and never imports lpips at runtime.
-lpips>=0.1.4
+# On-demand inference: the patch explorer and export-classifier verification
+# re-run the backbone + SAE when a dataset has no precomputed sidecar. The
+# explorer degrades gracefully (those panels disable themselves) if missing.
+torchvision>=0.19
+Overcomplete>=0.1

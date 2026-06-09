@@ -31,10 +31,10 @@ explorer's loader, exactly like the ``_heatmaps.pt`` sidecar).
 Usage:
     python precompute_ising.py \
         --explorer-data explorer_data/explorer_data_dinov2_layer11_d10000_k100_val.pt \
-        --sae-path      models/dinov2_l11_spatial/sae_1_SI-SAE_d10000_k100_per_init0.02_state_dict.pth \
+        --sae-path      models/sae_d10000_k100_state_dict.pth \
         --backbone dinov2 --layer 11 --token-type spatial \
-        --image-dir /scratch.global/lee02328/val \
-        --extra-image-dir /scratch.global/lee02328/coco/val2017 \
+        --image-dir /path/to/val \
+        --extra-image-dir /path/to/coco/val2017 \
         --recursive --interleave-classes
 """
 
@@ -52,7 +52,7 @@ from precompute_utils import ImageFolder, extract_tokens, load_sae  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Numeric core — factored out so it can be unit-tested / validated on cached
-# activation shards without spinning up the backbone (see validate_ising.py).
+# activation shards without spinning up the backbone.
 # ---------------------------------------------------------------------------
 
 def select_features(freq, min_frequency, max_features):

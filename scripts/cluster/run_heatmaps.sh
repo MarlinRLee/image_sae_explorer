@@ -27,7 +27,6 @@
 #          --export=DATA_PATH=.../explorer_data_d32000_k160_val.pt,SAE_PATH=.../sae.pth \
 #          run_heatmaps.sh
 #
-# Or submit via submit_all_heatmaps.sh which handles all models in one call.
 
 ulimit -n 65536
 export TMPDIR=/tmp

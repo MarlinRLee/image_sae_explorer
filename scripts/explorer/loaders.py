@@ -31,6 +31,29 @@ from .registry import ModelEntry, Registry
 from .persistence import _maybe_pull_and_merge_local
 
 
+# ---------- Process-level tensor cache ----------
+# Bokeh re-runs the app script for every browser session, but imported
+# modules persist — so without this cache every new tab re-reads the
+# multi-GB .pt files from disk and duplicates them in RAM. Only the
+# immutable torch.load payloads are cached; per-session mutable state
+# (label dicts, inference_cache) is rebuilt fresh in load_dataset.
+_TENSOR_CACHE: dict = {}
+
+
+def _cached_torch_load(path: str, weights_only: bool):
+    try:
+        key = (path, os.path.getmtime(path))
+    except OSError:
+        return torch.load(path, map_location='cpu', weights_only=weights_only)
+    if key not in _TENSOR_CACHE:
+        # Evict stale entries for the same file (regenerated .pt)
+        for stale in [k for k in _TENSOR_CACHE if k[0] == path]:
+            del _TENSOR_CACHE[stale]
+        _TENSOR_CACHE[key] = torch.load(path, map_location='cpu',
+                                        weights_only=weights_only)
+    return _TENSOR_CACHE[key]
+
+
 # ---------- JSON sidecar helpers ----------
 
 def _load_json_dict(path: str, kind: str) -> dict:
@@ -71,7 +94,7 @@ def load_dataset(path: str,
     the backbone + SAE for on-demand activation inference.
     """
     print(f"Loading [{label}] from {path} ...")
-    d = torch.load(path, map_location='cpu', weights_only=False)
+    d = _cached_torch_load(path, weights_only=False)
     cs = d.get('clip_text_scores', None)
 
     base = os.path.splitext(path)[0]
@@ -160,7 +183,7 @@ def load_dataset(path: str,
     sidecar = base + '_heatmaps.pt'
     if os.path.exists(sidecar):
         print(f"  Loading pre-computed heatmaps from {os.path.basename(sidecar)} ...")
-        hm = torch.load(sidecar, map_location='cpu', weights_only=True)
+        hm = _cached_torch_load(sidecar, weights_only=True)
         entry['top_heatmaps']       = hm.get('top_heatmaps')
         entry['mean_heatmaps']      = hm.get('mean_heatmaps')
         entry['crop_heatmaps']      = hm.get('crop_heatmaps')
@@ -177,7 +200,7 @@ def load_dataset(path: str,
     pa_sidecar = base + '_patch_acts.pt'
     if os.path.exists(pa_sidecar):
         print(f"  Loading pre-computed patch acts from {os.path.basename(pa_sidecar)} ...")
-        pa = torch.load(pa_sidecar, map_location='cpu', weights_only=True)
+        pa = _cached_torch_load(pa_sidecar, weights_only=True)
         img_to_row = {int(idx): row for row, idx in enumerate(pa['img_indices'].tolist())}
         entry['patch_acts'] = {
             'feat_indices': pa['feat_indices'],   # (n_unique, n_patches, top_k) int16

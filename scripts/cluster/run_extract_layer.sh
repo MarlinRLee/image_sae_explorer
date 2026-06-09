@@ -10,8 +10,6 @@
 #SBATCH --output=/users/9/lee02328/Ada_Comp/SAE_IN_COCO/smart_init_stability_SAE/logs/extract_layer_%j.out
 
 # Extract vision backbone hidden states to float16 shards.
-# Replaces: run_extract.sh, run_extract_cls.sh, run_extract_clip.sh,
-#           run_extract_dino_layer.sh, run_extract_clip_layer.sh
 #
 # Usage: sbatch run_extract_layer.sh <split> [layer] [token_type] [backbone]
 #   <split>      : in_train | in_val | coco_train | coco_val

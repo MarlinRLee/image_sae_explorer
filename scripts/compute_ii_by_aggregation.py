@@ -3,7 +3,7 @@ Interpretability Index (II) computed separately under each MEI aggregation.
 
 The stored ``interp_index`` in explorer_data is computed from the MAX-activation
 MEIs only (``top_img_idx``). This script computes the same LPIPS II
-(Klindt et al., 2023 — see interpretability_metric.pdf) under all three
+(Klindt et al., 2023) under all three
 aggregations the explorer tracks, by drawing each feature's top-M MEIs from the
 corresponding ranking:
 

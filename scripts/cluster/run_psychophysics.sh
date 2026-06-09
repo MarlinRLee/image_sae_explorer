@@ -17,7 +17,7 @@
 #
 # Prereq: the primary explorer_data must already carry 'interp_index'
 # (run run_interp_index.sh on it first). Submit chained, e.g.:
-#   IMG=10531421   # the get_Imagenet.sh job id
+#   IMG=10531421   # the image-download job id
 #   J1=$(sbatch --parsable --dependency=afterok:$IMG run_interp_index.sh \
 #          $BASE/explorer_data/explorer_data_d32000_k160_val.pt)
 #   sbatch --dependency=afterok:$J1 run_psychophysics.sh

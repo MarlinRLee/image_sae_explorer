@@ -33,6 +33,9 @@ already-downloaded files.
 > The default `pip install torch` pulls the CUDA wheel (~2 GB). For CPU only:
 > `pip install --index-url https://download.pytorch.org/whl/cpu torch`
 
+For a synthetic no-download smoke test (`--synthetic`) and a tour of the UI,
+see [`examples/local_quickstart.md`](examples/local_quickstart.md).
+
 ## Export a feature as a classifier
 
 Select a feature and click **Export classifier (.py)** (next to the name
@@ -57,10 +60,14 @@ The model list lives entirely in `configs/models.yaml` — add one block and the
 dropdown picks it up. The data files behind each block follow the schema in
 [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
 
-1. **Train** an SAE on backbone activations:
+1. **Train** a TopK SAE on backbone activations:
    ```bash
-   python src/main.py <shards-dir> SI-SAE --d-model 32000 ...
+   python src/main.py <shards-dir> --d-model 32000 --k-fraction 0.005 \
+       --val-dir <val-shards-dir> --mixed-precision
    ```
+   Checkpoints land in `checkpoints/`, the final weights in
+   `models/sae_d<d>_k<k>_state_dict.pth` (the `_k<top_k>` tag in the
+   filename is what the explorer's SAE loader parses).
 2. **Precompute** the explorer sidecars (GPU; runs both precompute steps):
    ```bash
    bash scripts/precompute_all.sh \
@@ -75,8 +82,10 @@ dropdown picks it up. The data files behind each block follow the schema in
    the equivalent flags.)
 3. **Upload** the sidecar + heatmaps + SAE checkpoint to your HF dataset repo:
    ```bash
-   bash scripts/submit_hf_upload.sh
+   bash scripts/cluster/submit_hf_upload.sh            # data-only (label-safe)
    ```
+   (`full` mode also pushes SAE weights, label JSONs, and thumbnails — see the
+   script header for the label-overwrite guard.)
 4. **Append** one block to `configs/models.yaml`:
    ```yaml
    - id:         my_new_sae
@@ -164,11 +173,19 @@ scripts/
   precompute_*.py            # sidecar generation pipeline
   precompute_all.sh          # chains both precompute steps for one SAE
   validate_registry.py       # sanity-check models.yaml against the .pt files
-  submit_hf_upload.sh        # upload sidecars + SAE to the HF dataset repo
+  add_*.py, auto_interp_*.py # optional .pt enrichment (CLIP scores, interp
+                             # index, Gemini labels)
+  psychophysics_*.py,        # research/analysis evals behind the paper
+  precompute_ising.py,       # (not needed for the demo)
+  plot_ising_grouping_matrices.py
   sync_hf_space.sh           # push canonical source to the HF Space repo
+  cluster/                   # SLURM wrappers for the pipeline (site-specific;
+                             # see scripts/cluster/README.md)
+archive/                     # one-off research/migration scripts (provenance only)
 hf_space/                    # production HF Space repo (gitignored)
 src/                         # training / precompute source (separate concern)
 requirements.txt             # demo runtime deps
+requirements-pipeline.txt    # extra deps for training / precompute / analysis
 ```
 
 ## Troubleshooting

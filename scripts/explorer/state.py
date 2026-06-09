@@ -75,9 +75,12 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise SystemExit(f"--registry file not found: {args.registry}")
     if not os.path.isdir(args.data_dir):
         raise SystemExit(f"--data-dir is not a directory: {args.data_dir}")
-    for bd in filter(None, [args.image_dir, args.extra_image_dir]):
-        if not os.path.isdir(bd):
-            print(f"Warning: image dir does not exist: {bd}")
+    # A missing primary image dir means every grid renders gray placeholders,
+    # which reads as broken data — fail fast instead.
+    if args.image_dir and not os.path.isdir(args.image_dir):
+        raise SystemExit(f"--image-dir is not a directory: {args.image_dir}")
+    if args.extra_image_dir and not os.path.isdir(args.extra_image_dir):
+        print(f"Warning: --extra-image-dir does not exist: {args.extra_image_dir}")
 
 
 # ---------- UI session state ----------

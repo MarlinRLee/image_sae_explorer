@@ -2,7 +2,7 @@
 In-silico psychophysics validation of the Interpretability Index, plus a
 2AFC separability ("diversity") metric — Klindt et al. (2023).
 
-See interpretability_metric.pdf, Sections 2.3 / 3.1 / 3.3 and App. D.
+Follows Klindt et al., 2023 (Sections 2.3 / 3.1 / 3.3 and App. D).
 
 What this computes
 ------------------
@@ -263,9 +263,10 @@ def main():
     p.add_argument("--token-type", default="spatial", choices=["spatial", "cls", "all"])
     p.add_argument("--d-model", type=int, default=32000)
     p.add_argument("--top-k", type=int, default=160)
-    p.add_argument("--image-dir", default="/scratch.global/lee02328/coco/val2017")
+    p.add_argument("--image-dir", required=True)
     p.add_argument("--extra-image-dir", action="append", default=[])
-    p.add_argument("--recursive", action="store_true", default=True)
+    p.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True,
+                   help="Recurse into image-dir subdirectories (--no-recursive to disable)")
     p.add_argument("--pool-size", type=int, default=5000,
                    help="cap on pool images (evenly subsampled)")
     p.add_argument("--num-workers", type=int, default=8)

@@ -36,10 +36,6 @@ from .images import _resolve_image_path
 # ---------- Tunables ----------
 DEFAULT_MODEL = "gemini-2.5-flash"   # also serves as the auto-interp author tag
 N_GEMINI_IMAGES = 6                  # max top-MEIs to send per call
-HM_ALPHA = 0.25                      # heatmap overlay opacity (currently unused
-                                     # — Gemini sees the plain image, not the
-                                     # blended overlay; reserved for the
-                                     # future heatmap-aware prompt path)
 
 SYSTEM_PROMPT = (
     "You are labeling features of a Sparse Autoencoder (SAE) trained on a "
@@ -66,9 +62,8 @@ def _label_thread(feat: int,
     """Worker entry point: encode top images, call Gemini, post result back
     onto the Bokeh document.
 
-    ``mei_items`` is a list of ``(stored_image_path, heatmap_or_None)``.
-    Heatmaps are reserved for a future overlay-prompt path; for now only
-    the resolved image is sent.
+    ``mei_items`` is a list of stored image paths (resolved against
+    ``images.IMAGE_DIRS`` here).
     """
     try:
         from google import genai
@@ -76,7 +71,7 @@ def _label_thread(feat: int,
 
         client = genai.Client(api_key=api_key)
         parts = []
-        for path, _heatmap in mei_items[:N_GEMINI_IMAGES]:
+        for path in mei_items[:N_GEMINI_IMAGES]:
             resolved = _resolve_image_path(path)
             if resolved is None:
                 continue
@@ -180,11 +175,7 @@ def build(ctx,
         for j in range(n_top_stored):
             idx = state.top_img_idx[feat, j].item()
             if idx >= 0:
-                hm = None
-                if state.top_heatmaps is not None:
-                    hm = state.top_heatmaps[feat, j].float().numpy().reshape(
-                        state.heatmap_patch_grid, state.heatmap_patch_grid)
-                mei_items.append((state.image_paths[idx], hm))
+                mei_items.append(state.image_paths[idx])
 
         if not mei_items:
             status_div.text = "<span style='color:#c00'>No MEI paths found.</span>"

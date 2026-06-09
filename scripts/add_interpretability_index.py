@@ -3,7 +3,7 @@ Post-hoc Interpretability Index (II) enrichment for explorer_data.pt files.
 
 Implements the metric from Klindt et al. (2023), "Identifying Interpretable
 Visual Features in Artificial and Biological Neural Systems" (see
-interpretability_metric.pdf). For a direction in activation space -- here, an
+Klindt et al., 2023). For a direction in activation space -- here, an
 SAE feature -- the II is the average pairwise image similarity among its top-M
 Maximally Exciting Images (MEIs):
 
@@ -25,7 +25,7 @@ Usage
 -----
     python add_interpretability_index.py \
         --data ../explorer_data_d32000_k160_val.pt \
-        --image-dir /scratch.global/lee02328/val \
+        --image-dir /path/to/val \
         --interp-m 5
 
 The enriched file is saved to --output-path (defaults to overwriting --data

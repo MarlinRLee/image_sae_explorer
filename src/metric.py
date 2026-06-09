@@ -1,15 +1,12 @@
 """
 Metrics for evaluating Sparse Autoencoders based on the Archetypal SAE paper.
-Implements metrics across four dimensions:
+Implements metrics across three dimensions:
 1. Sparse Reconstruction (R^2, Dead Codes)
-2. Consistency (Stability, Max Cosine, OOD Score)
-3. Structure in Dictionary D (Stable Rank, Effective Rank, Coherence)
-4. Structure in Codes Z (Connectivity, Negative Interference)
+2. Structure in Dictionary D (Stable Rank, Effective Rank, Coherence)
+3. Structure in Codes Z (Connectivity, Negative Interference)
 """
 
 import torch
-from scipy.optimize import linear_sum_assignment
-from itertools import combinations
 
 Epsilon = 1e-6
 
@@ -63,36 +60,6 @@ def coherence(D, chunk_size=2048):
         chunk[local_indices, diag_indices] = 0.0
         max_val = max(max_val, chunk.max().item())
     return max_val
-
-
-def stability(D1, D2):
-    """
-    Compute stability between two dictionaries using Hungarian algorithm.
-    
-    Stability(D, D') = max_{Π} (1/n) * Tr(D^T Π D')
-    """
-    D1_norm = D1 / (D1.norm(dim=1, keepdim=True) + Epsilon)
-    D2_norm = D2 / (D2.norm(dim=1, keepdim=True) + Epsilon)
-    
-    similarity_matrix = torch.matmul(D1_norm, D2_norm.T)
-    cost_matrix = -similarity_matrix.cpu().numpy()
-    
-    row_ind, col_ind = linear_sum_assignment(cost_matrix)
-    aligned_similarities = similarity_matrix[row_ind, col_ind]
-    
-    return aligned_similarities.mean().item()
-
-
-def max_cosine_similarity(D1, D2):
-    """
-    Compute maximum cosine similarity between any pair of atoms.
-    
-    Max Cosine = max_{i,j} <D_i, D'_j>
-    """
-    D1_norm = D1 / (D1.norm(dim=1, keepdim=True) + Epsilon)
-    D2_norm = D2 / (D2.norm(dim=1, keepdim=True) + Epsilon)
-    similarity_matrix = torch.matmul(D1_norm, D2_norm.T)
-    return similarity_matrix.max().item()
 
 
 # =============================================================================
@@ -258,8 +225,6 @@ def evaluate_sae(sae, dataloader, device):
     -------
     metrics : dict
         Dictionary containing all computed metrics.
-    dictionary : torch.Tensor
-        The dictionary D for stability computation.
     """
     sae.eval()
     
@@ -301,7 +266,7 @@ def evaluate_sae(sae, dataloader, device):
         'R2': r2_acc.compute(),
         'Dead Codes': dead_codes_acc.compute(),
         
-        # Consistency (OOD only - stability needs multiple SAEs)
+        # Consistency
         'OOD Score': ood_acc.compute(),
         
         # Dictionary Structure
@@ -314,76 +279,4 @@ def evaluate_sae(sae, dataloader, device):
         'Neg. Inter.': neg_inter_acc.compute(D),
     }
     
-    return metrics, D.cpu()
-
-
-def aggregate_metrics(all_results):
-    """
-    Compute average metrics across multiple SAE results.
-
-    Parameters
-    ----------
-    all_results : dict
-        Mapping of SAE keys to metric dicts, e.g. {"sae_1": {...}, "sae_2": {...}}.
-
-    Returns
-    -------
-    dict
-        Averaged metrics with "avg_" prefix.
-    """
-    if not all_results:
-        return {}
-    avg_metrics = {}
-    all_keys = set()
-    for metrics in all_results.values():
-        all_keys.update(metrics.keys())
-    for key in all_keys:
-        vals = [m[key] for m in all_results.values() if key in m]
-        if vals:
-            avg_metrics[f"avg_{key}"] = sum(vals) / len(vals)
-    return avg_metrics
-
-
-def compute_pairwise_stability(dictionaries, device):
-    """
-    Compute stability and max cosine metrics for all pairs of dictionaries.
-    
-    Parameters
-    ----------
-    dictionaries : list of torch.Tensor
-        List of dictionary tensors, each of shape (num_codes, dim).
-    device : torch.device or str
-        Device for computation.
-    
-    Returns
-    -------
-    dict
-        Contains 'avg_stability', 'avg_max_cosine', and per-pair values.
-    """
-    n = len(dictionaries)
-    if n < 2:
-        return {'avg_stability': None, 'avg_max_cosine': None, 'pairs': {}}
-    
-    stabilities = []
-    max_cosines = []
-    pair_results = {}
-    
-    for (i, D1), (j, D2) in combinations(enumerate(dictionaries), 2):
-        D1_dev = D1.to(device)
-        D2_dev = D2.to(device)
-        
-        stab = stability(D1_dev, D2_dev)
-        max_cos = max_cosine_similarity(D1_dev, D2_dev)
-        
-        stabilities.append(stab)
-        max_cosines.append(max_cos)
-        pair_results[f"sae_{i+1}_vs_sae_{j+1}"] = {
-            'stability': stab,
-            'max_cosine': max_cos
-        }
-    
-    return {
-        'avg_stability': sum(stabilities) / len(stabilities),
-        'avg_max_cosine': sum(max_cosines) / len(max_cosines),
-        'pairs': pair_results
-    }
+    return metrics

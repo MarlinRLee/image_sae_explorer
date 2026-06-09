@@ -19,9 +19,9 @@ once, avoiding a full pass over millions of images.
 
 Usage:
     python precompute_explorer_data.py \
-        --image-dir /scratch.global/lee02328/imagenet/train \
-        --extra-image-dir /scratch.global/lee02328/coco/train2017 \
-        --sae-path ../trained_models/sae_1_SI-SAE_d32000_k160_per_init0.1_state_dict.pth \
+        --image-dir /path/to/imagenet/train \
+        --extra-image-dir /path/to/coco/train2017 \
+        --sae-path models/sae_d32000_k160_state_dict.pth \
         --output-path ../explorer_data.pt \
         --recursive \
         --interleave-classes \
@@ -36,6 +36,7 @@ import sys
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from PIL import Image
 import umap
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
@@ -263,7 +264,7 @@ def main():
     parser.add_argument("--extra-image-dir", type=str, default=None,
                         help="Additional image directory to include (e.g. COCO train)")
     parser.add_argument("--sae-path", type=str, required=True)
-    parser.add_argument("--output-path", type=str, default="../explorer_data.pt")
+    parser.add_argument("--output-path", type=str, default="explorer_data.pt")
     parser.add_argument("--thumbnail-dir", type=str, default=None,
                         help="If set, save resized JPEG thumbnails for all images referenced "
                              "in feature display slots and the UMAP reservoir, and store "
@@ -306,7 +307,7 @@ def main():
                         choices=["dinov3", "clip", "dinov2"],
                         help="Vision backbone: 'dinov3' (default), 'clip' (ViT-L/14), or 'dinov2' (ViT-B/14).")
     parser.add_argument("--patch-norm-stats", type=str, default=None,
-                        help="Path to dataset_stats.pt from load_imagenet_features_patch_norm.py. "
+                        help="Path to the patch-norm extraction (positional_mean / positional_std). "
                              "If set, applies per-patch-position normalization "
                              "(subtract positional_mean, divide by std) to backbone tokens "
                              "before feeding them to the SAE.")

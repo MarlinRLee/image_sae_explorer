@@ -164,8 +164,10 @@ def build(ctx, display_name: Callable[[int], str],
     layout = column(search_panel, feature_table)
 
     def on_dataset_changed(idx: int) -> None:
-        ctx.ui.search_filter = None
-        apply_order(get_sorted_order())
+        # Full search reset — also clears the query text and the
+        # "N feature(s) matching" status so the UI doesn't claim a search
+        # is active on the new dataset.
+        _do_clear_search()
 
     return {
         'layout':                layout,

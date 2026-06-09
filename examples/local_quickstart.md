@@ -27,7 +27,7 @@ clicks, and the dataset switch are all real.
 Iterate by re-running. The launcher reuses an existing `./demo_data/`
 unless you delete it.
 
-## Option B — real sample data from HuggingFace (~5 minutes, ~250 MB)
+## Option B — real production data from HuggingFace (several GB)
 
 For the actual user experience:
 
@@ -38,14 +38,13 @@ pip install -r requirements.txt
 bash scripts/run_explorer_local.sh
 ```
 
-This downloads:
-
-- `explorer_data_dinov2_layer11_d10000_k100_val.pt` (~50 MB) — the
-  production primary SAE.
-- `explorer_data_dinov2_layer11_d10000_k100_val_heatmaps.pt` (~50 MB) —
-  the matching heatmap sidecar.
-- `hf_images.tar.gz` from `Ramnie/sae-explorer-images` (~150 MB) —
-  thumbnail JPEGs the explorer uses to render image grids.
+This downloads, for **every** model listed in `configs/models.yaml`
+(seven at the time of writing), the `.pt` sidecar, its `_heatmaps.pt`
+companion, and the SAE `.pth` checkpoint from `Ramnie/sae-explorer-data`,
+plus the thumbnail tarball `hf_images.tar.gz` from
+`Ramnie/sae-explorer-images`. Expect several GB on first run; trim
+`configs/models.yaml` to just the `primary: true` block if you only want
+one model.
 
 Downloads are idempotent — re-running skips files already present in
 `./local_data/` and `./local_images/`.
@@ -79,16 +78,20 @@ sibling `scripts/explorer/` package; if you're editing, this is the
 | File | Holds |
 |---|---|
 | `scripts/explorer/state.py` | `_State`, `_UI`, argparse + validation helpers |
-| `scripts/explorer/runtime.py` | `args` / `state` / `ui` / `datasets` slots + `load_image` (late-bound runtime references) |
+| `scripts/explorer/context.py` | `Context` — the bundle of args/state/datasets passed to every panel |
+| `scripts/explorer/registry.py` | `configs/models.yaml` parsing + per-model metadata |
+| `scripts/explorer/loaders.py` | `.pt` / sidecar / names-JSON loading |
 | `scripts/explorer/images.py` | Pure image helpers — path resolution, opens, alpha colormaps, `pil_to_data_url` |
-| `scripts/explorer/rendering.py` | `render_heatmap_overlay`, hover thumbnails, the shared `_render_executor`, the prewarm thread |
+| `scripts/explorer/rendering.py` | `render_heatmap_overlay`, hover thumbnails, the shared render executor, the prewarm thread |
 | `scripts/explorer/html_views.py` | `_status_html`, image-grid HTML, comparison HTML |
 | `scripts/explorer/activations.py` | `compute_patch_activations` + heatmap-reconstruction fallback (no GPU) |
 | `scripts/explorer/persistence.py` | Atomic JSON save + debounced HF dataset push |
-| `scripts/explorer_app.py` | Bokeh widget construction, callbacks, layout, `curdoc().add_root()` |
+| `scripts/explorer/gemini.py` | "Label with Gemini" panel + API call |
+| `scripts/explorer/classifier_export.py` | "Export classifier (.py)" generator |
+| `scripts/explorer/panels/` | `feature_list`, `clip_search`, `cross_sae`, `patch_explorer`, `summary` — uniform `build(ctx)` factories |
+| `scripts/explorer_app.py` | Bokeh entry point — UMAP view, dataset switch, layout, `curdoc().add_root()` |
 
-The bootstrap is the only file that mutates module-level Bokeh widgets;
-every helper is callable in isolation (e.g. `from explorer.html_views
+Every helper module is callable in isolation (e.g. `from explorer.html_views
 import _status_html` is fine outside Bokeh).
 
 ## Optional features
