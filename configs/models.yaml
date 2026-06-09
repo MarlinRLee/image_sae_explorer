@@ -4,9 +4,8 @@
 # and the HF Space entrypoint read this file via demo/bootstrap_demo.py
 # and the explorer reads it via --registry.
 #
-# To add a new model: append one block to `models:` (see "Add your own
-# SAE + data" in README.md for the full pipeline). Exactly one entry must
-# have `primary: true`.
+# To add a new model: append one block to `models:` (see docs/ADD_YOUR_OWN.md
+# for the full pipeline). Exactly one entry must have `primary: true`.
 
 defaults:
   hf_data_repo:   Ramnie/sae-explorer-data    # holds .pt sidecars + .pth SAE weights

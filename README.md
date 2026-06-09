@@ -1,18 +1,16 @@
 # SAE Feature Explorer
 
 Interactive Bokeh-served explorer for Sparse Autoencoder (SAE) features
-trained on vision-transformer activations (DINOv2 / DINOv3 / CLIP). Click
-features in a UMAP, see their top-activating images with heatmap overlays,
-search by CLIP text, label features by hand or with Gemini, and **export any
-feature as a standalone Python image classifier**.
+trained on vision-transformer activations (DINOv3 / CLIP). Click features in
+a UMAP, see their top-activating images with heatmap overlays, search by CLIP
+text, label features by hand or with Gemini, and export any feature as a
+standalone Python image classifier.
 
 A live deployment runs at https://huggingface.co/spaces/Ramnie/sae-explorer.
 
----
-
 ## Quickstart
 
-Requires **Python 3.10+**. The demo runs on CPU; no GPU is required to serve.
+Requires **Python 3.10+**. Serving runs on CPU; no GPU needed.
 
 ```bash
 git clone https://github.com/MarlinRLee/image_sae_explorer.git
@@ -24,144 +22,86 @@ bash demo/run_local.sh
 
 Open http://localhost:5006/explorer_app.
 
-`demo/run_local.sh` reads `configs/models.yaml`, downloads every listed
-model (`.pt` sidecar + `_heatmaps.pt` + SAE `.pth`) from the Hugging Face
-dataset repo into `./local_data/`, downloads + extracts the thumbnails tarball
-into `./local_images/`, and launches `bokeh serve` on port 5006. Re-runs skip
-already-downloaded files.
+The launcher downloads every model listed in `configs/models.yaml` (sidecar
+`.pt` + heatmaps + SAE weights, several GB total) plus a thumbnails tarball,
+then starts the Bokeh server. Re-runs skip already-downloaded files. Two
+useful variants:
 
-> The default `pip install torch` pulls the CUDA wheel (~2 GB). For CPU only:
+- **`bash demo/run_local.sh --synthetic`** — ~30-second offline smoke test on
+  generated data; no downloads, no HF account.
+- **One model instead of seven** — trim `configs/models.yaml` to just the
+  `primary: true` block before the first run.
+
+> `pip install torch` pulls the CUDA wheel (~2 GB). For CPU only:
 > `pip install --index-url https://download.pytorch.org/whl/cpu torch`
 
-For a synthetic no-download smoke test (`--synthetic`) and a tour of the UI,
-see [`examples/local_quickstart.md`](examples/local_quickstart.md).
+### What you'll see
+
+- **UMAP scatter** — every dot is a feature; hover for top-3 thumbnails,
+  click to drive the detail panel.
+- **Feature detail** — name input, Gemini label button, and heatmap grids
+  (top / mean / 75th-percentile aggregations, plus a compare view).
+- **Sortable feature list** — searchable by manual or auto-interp name.
+- **Patch Explorer** — load any image, click/drag patches to find which
+  features fire on those tokens.
+- **CLIP Text Search** — rank features against any text query.
+- **Cross-SAE Compare** — side-by-side feature renders across two SAEs.
 
 ## Export a feature as a classifier
 
-Select a feature and click **Export classifier (.py)** (next to the name
-field). You get a self-contained `sae_classifier_feat<N>.py` that, with **no
-arguments**, downloads the backbone + SAE + the demo image tarball, scores the
-feature's own top-activating image, and prints the activation:
+Select a feature and click **Export classifier (.py)**. You get a
+self-contained `sae_classifier_feat<N>.py` that, with no arguments, downloads
+the backbone + SAE + demo images, scores the feature's own top-activating
+image, and prints the activation:
 
 ```bash
 pip install torch torchvision transformers huggingface_hub Overcomplete Pillow
 python sae_classifier_feat123.py                 # scores a guaranteed-positive toy image
-python sae_classifier_feat123.py my_image.jpg    # score your own image
-python sae_classifier_feat123.py my_image.jpg --threshold 0.5 --agg mean
+python sae_classifier_feat123.py my_image.jpg --threshold 0.5
 ```
 
-It also exposes `make_classifier()` for use as a library — a one-feature
-"export classifier" you can drop into other code. The generator lives in
-`demo/explorer/classifier_export.py`.
+It also exposes `make_classifier()` for use as a library.
 
 ## Add your own SAE + data
 
-The model list lives entirely in `configs/models.yaml` — add one block and the
-dropdown picks it up. The data files behind each block follow the schema in
+`configs/models.yaml` is the single source of truth — add one block and the
+model dropdown picks it up. The pipeline, end to end:
+
+1. `scripts/extract_activations.py` — backbone activation shards
+2. `python src/main.py <shards>` — train a TopK SAE
+3. `bash scripts/precompute_all.sh` — build the explorer sidecars (GPU); your
+   image dataset is chosen here via `--image-dir`
+4. optional enrichments — CLIP text search, interpretability index, bulk
+   Gemini labels
+5. `bash scripts/upload_hf.sh` — push to your HF dataset repo
+6. append a registry block, `python demo/validate_registry.py`, re-run
+
+Step-by-step instructions are in
+[`docs/ADD_YOUR_OWN.md`](docs/ADD_YOUR_OWN.md); the `.pt` schema is in
 [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
-
-1. **Train** a TopK SAE on backbone activations:
-   ```bash
-   python src/main.py <shards-dir> --d-model 32000 --k-fraction 0.005 \
-       --val-dir <val-shards-dir> --mixed-precision
-   ```
-   Checkpoints land in `checkpoints/`, the final weights in
-   `models/sae_d<d>_k<k>_state_dict.pth` (the `_k<top_k>` tag in the
-   filename is what the explorer's SAE loader parses).
-2. **Precompute** the explorer sidecars (GPU; runs both precompute steps):
-   ```bash
-   bash scripts/precompute_all.sh \
-       --sae-path  <sae>_k160.pth \
-       --image-dir /scratch/val \
-       --output    explorer_data_my_new_sae.pt \
-       --backbone  dinov3 --layer 24 \
-       -- --d-model 32000 --top-k 160 --interleave-classes
-   ```
-   (Or call `scripts/precompute_explorer_data.py` then
-   `scripts/precompute_heatmaps.py` directly — `precompute_all.sh --help` shows
-   the equivalent flags.)
-3. **Upload** the sidecar + heatmaps + SAE checkpoint to your HF dataset repo:
-   ```bash
-   bash scripts/upload_hf.sh                           # data-only (label-safe)
-   ```
-   (`full` mode also pushes SAE weights, label JSONs, and thumbnails — see the
-   script header for the label-overwrite guard.)
-4. **Append** one block to `configs/models.yaml`:
-   ```yaml
-   - id:         my_new_sae
-     label:      My New SAE
-     data_file:  explorer_data_my_new_sae.pt
-     sae_file:   sae_my_new_sae_k160.pth     # filename must contain _k<top_k>_
-     backbone:   dinov3
-     layer:      24
-     token_type: spatial
-   ```
-   `backbone` / `layer` / `token_type` must match what you precomputed — the
-   on-demand heatmap and export-classifier inference trust the registry.
-5. **Validate** the registry before serving:
-   ```bash
-   python demo/validate_registry.py --data-dir local_data
-   ```
-6. **Re-run** locally (downloads the new files, picks them up automatically):
-   ```bash
-   bash demo/run_local.sh
-   ```
-
-### Using a new image dataset
-
-The image source is fixed at precompute time, not serve time — point step 2 at
-your images with `--image-dir /path/to/images` (add `--extra-image-dir` if they
-span two trees). Upload the resulting `.pt` files plus a thumbnail tarball; the
-tarball repo is shared across all models in a registry
-(`defaults.hf_images_repo`), so change it there to swap the image source for
-everything.
 
 ## Optional features
 
-| Feature | Enable by | What it does |
-|---|---|---|
-| Free-text CLIP search | (always on if `transformers` installed) | Encodes any query with CLIP and ranks features by cosine similarity to image embeds. |
-| Gemini auto-interp | export `GOOGLE_API_KEY=...` | "Label with Gemini" button calls `gemini-2.5-flash` on the top-activating images and saves the returned label. |
-| Persisted feature names | export `HF_TOKEN=...` and `HF_DATASET_REPO=Ramnie/sae-explorer-data` | Names typed into the demo are debounce-pushed to the HF dataset repo so they persist across sessions. **Without these, edits are session-local.** |
+All inert without their env var — export it in the shell you launch from:
 
-All three are inert without the relevant environment variables. Export them in
-the same shell you launch from — `bash demo/run_local.sh` inherits
-the env into the bokeh subprocess:
-
-```bash
-export GOOGLE_API_KEY=AIza...        # enables the Label with Gemini button
-export HF_TOKEN=hf_...               # enables persisted feature names
-bash demo/run_local.sh
-```
-
-Add the `export` lines to `~/.bashrc` (or a project-local `.env` you `source`)
-to make them stick across terminals.
+| Feature | Enable by |
+|---|---|
+| Gemini auto-interp button | `export GOOGLE_API_KEY=...` |
+| Feature names persisted to HF (otherwise session-local) | `export HF_TOKEN=...` and `export HF_DATASET_REPO=<you>/sae-explorer-data` |
+| Free-text CLIP search | on by default when `transformers` is installed |
 
 ## Project layout
 
 ```
-configs/
-  models.yaml                # registry — single source of truth for the demo
-docs/
-  DATA_FORMAT.md             # explorer_data*.pt / _heatmaps.pt schema
+configs/models.yaml          # model registry — single source of truth
+docs/                        # ADD_YOUR_OWN.md pipeline guide, DATA_FORMAT.md schema
 demo/                        # everything needed to RUN the explorer
-  run_local.sh               # local launcher (calls bootstrap_demo.py)
-  explorer_app.py            # Bokeh entry point (composes panels)
-  explorer/                  # state, rendering, persistence, html_views, images,
-                             # activations, registry, loaders, classifier_export
-  explorer/panels/           # feature_list, clip_search, cross_sae,
-                             # patch_explorer, summary
-  bootstrap_demo.py          # registry-driven downloader + launcher
-  build_demo_data.py         # synthetic no-download dataset (--synthetic)
+  run_local.sh               # launcher (downloads data, starts bokeh serve)
+  explorer_app.py            # Bokeh entry point
+  explorer/                  # app modules + panels
+  build_demo_data.py         # synthetic dataset for --synthetic
   validate_registry.py       # sanity-check models.yaml against the .pt files
-scripts/                     # data pipeline that PREPARES demo data
-  extract_activations.py     # backbone activation shards for training
-  precompute_*.py            # sidecar generation pipeline
-  precompute_all.sh          # chains both precompute steps for one SAE
-  add_clip_embeddings.py     # .pt enrichment — CLIP text search
-  add_interpretability_index.py  # .pt enrichment — interp-index sorting
-  auto_interp.py             # bulk Gemini labels, synced with the HF label JSONs
-  upload_hf.sh               # push sidecars/weights/thumbnails to HF
+scripts/                     # pipeline that PREPARES demo data (GPU)
 src/                         # SAE training + shared inference helpers
 requirements.txt             # demo runtime deps
 requirements-pipeline.txt    # extra deps for training / precompute
@@ -169,18 +109,13 @@ requirements-pipeline.txt    # extra deps for training / precompute
 
 ## Troubleshooting
 
-- **`bokeh serve` exits with `--data-dir is not a directory`** — the registry's
-  `data_file` paths are resolved relative to `--data-dir`. Run
-  `bash demo/run_local.sh` first to populate `./local_data/`.
+- **`--data-dir is not a directory`** — run `bash demo/run_local.sh` first to
+  populate `./local_data/`; registry paths are resolved relative to it.
 - **Image grid shows gray placeholders** — `--image-dir` doesn't contain the
-  basenames stored in the `.pt` file. Set `--extra-image-dir` to a second
-  directory if your images live in two trees.
-- **"CLIP text search unavailable for this dataset"** — the active dataset has
-  no precomputed CLIP scores. Run `scripts/add_clip_embeddings.py` against that
-  `.pt`, or switch to a CLIP-enabled dataset in the dropdown.
-- **Export button says "Dead feature" / "No SAE checkpoint"** — pick a feature
-  that fired (`frequency > 0`), and make sure the active model's registry block
-  has a `sae_file` whose name contains `_k<top_k>_`.
-- **A new model errors mid-session** — run
-  `python demo/validate_registry.py --data-dir local_data` to catch missing
-  fields or backbone/token mismatches before serving.
+  basenames stored in the `.pt` file.
+- **"CLIP text search unavailable for this dataset"** — the active dataset
+  has no precomputed CLIP scores; switch datasets or see
+  [`docs/ADD_YOUR_OWN.md`](docs/ADD_YOUR_OWN.md).
+- **A model errors mid-session** — run
+  `python demo/validate_registry.py --data-dir local_data` to catch registry
+  mismatches before serving.

@@ -89,5 +89,5 @@ precompute. Loaded by `demo/explorer/loaders.py`. All are
 | `_feature_names_authors.json` / `_auto_interp_authors.json` | Who set each label. |
 | `_history.json` / `_auto_interp_history.json` | Per-feature `(label, author, timestamp)` history. |
 
-See the README's "Add your own SAE + data" section for how these files are
-generated and uploaded.
+See [ADD_YOUR_OWN.md](ADD_YOUR_OWN.md) for how these files are generated and
+uploaded.

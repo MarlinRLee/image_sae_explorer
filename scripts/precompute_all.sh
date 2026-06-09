@@ -21,7 +21,7 @@
 #       -- --d-model 32000 --top-k 160 --interleave-classes
 #
 # This is a convenience wrapper; for a one-off run you can still call the two
-# scripts directly (see README "Add your own SAE + data").
+# scripts directly (see docs/ADD_YOUR_OWN.md).
 set -euo pipefail
 
 SAE_PATH="" IMAGE_DIR="" OUTPUT="" BACKBONE="dinov3"
