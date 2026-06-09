@@ -3,7 +3,7 @@ Unified backbone interface for SAE feature explorer inference.
 
 Provides ``load_batched_backbone()`` — a unified loader for the batched
 precompute / extraction scripts. (Single-image on-demand inference in the
-explorer builds its own forward fn; see scripts/explorer/activations.py.)
+explorer builds its own forward fn; see demo/explorer/activations.py.)
 """
 from __future__ import annotations
 

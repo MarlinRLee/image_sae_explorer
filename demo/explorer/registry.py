@@ -6,9 +6,9 @@ The rest are lazy compares, loaded on first selection from the dropdown.
 
 The same registry is consumed by:
 
-- ``scripts/explorer_app.py`` (via ``--registry``) to build the dataset list
+- ``demo/explorer_app.py`` (via ``--registry``) to build the dataset list
   and the model dropdown.
-- ``scripts/bootstrap_demo.py`` to drive HF Hub downloads for both the
+- ``demo/bootstrap_demo.py`` to drive HF Hub downloads for both the
   local launcher and the HF Space entrypoint.
 
 To add a model, append one block to ``configs/models.yaml`` — no other

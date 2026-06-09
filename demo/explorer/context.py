@@ -1,7 +1,7 @@
 """Per-session explorer context.
 
 One :class:`Context` is constructed per Bokeh session in
-``scripts/explorer_app.py`` and threaded explicitly into every panel
+``demo/explorer_app.py`` and threaded explicitly into every panel
 ``build(ctx, ...)`` factory and every rendering / activation helper.
 
 It replaces the old ``explorer.runtime`` module, whose attributes were

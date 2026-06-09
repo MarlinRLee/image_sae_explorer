@@ -31,7 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
                         "models. Exactly one entry must set 'primary: true'.")
     p.add_argument("--data-dir", type=str, required=True,
                    help="Local directory holding the registry's .pt files "
-                        "(downloaded by scripts/bootstrap_demo.py).")
+                        "(downloaded by demo/bootstrap_demo.py).")
     p.add_argument("--image-dir", type=str, required=True,
                    help="Primary image directory used during precompute")
     p.add_argument("--extra-image-dir", type=str, default=None,

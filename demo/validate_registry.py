@@ -13,8 +13,8 @@ Catches the mistakes that otherwise only surface as a stack trace mid-session:
 
 Run it on the canonical registry and the offline demo registry::
 
-    python scripts/validate_registry.py
-    python scripts/validate_registry.py --registry demo_data/models.yaml \\
+    python demo/validate_registry.py
+    python demo/validate_registry.py --registry demo_data/models.yaml \\
         --data-dir demo_data
 
 Exits non-zero if any check fails, so it slots into CI / pre-deploy.
@@ -33,7 +33,7 @@ from explorer.registry import load_registry  # noqa: E402
 # Tensor / scalar fields every explorer_data*.pt must carry. The JSON name
 # sidecars (feature_names, history, ...) are merged in by the loader at serve
 # time, not stored in the .pt, so they're intentionally absent here. Keep this
-# in sync with scripts/build_demo_data.py:_make_explorer_pt and docs/DATA_FORMAT.md.
+# in sync with demo/build_demo_data.py:_make_explorer_pt and docs/DATA_FORMAT.md.
 _REQUIRED_PT_FIELDS = (
     "image_paths", "d_model", "n_images", "patch_grid", "image_size",
     "top_img_idx", "top_img_act", "mean_img_idx", "mean_img_act",

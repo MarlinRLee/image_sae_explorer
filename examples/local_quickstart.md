@@ -11,7 +11,7 @@ Best for the absolute first run, code review, or smoke tests after edits:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-bash scripts/run_explorer_local.sh --synthetic
+bash demo/run_local.sh --synthetic
 ```
 
 The launcher generates `./demo_data/explorer_data_demo.pt`,
@@ -35,7 +35,7 @@ For the actual user experience:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-bash scripts/run_explorer_local.sh
+bash demo/run_local.sh
 ```
 
 This downloads, for **every** model listed in `configs/models.yaml`
@@ -71,25 +71,25 @@ Once the demo opens, you'll see (left → right, top → bottom):
 
 ## Where things live in the source
 
-The Bokeh entry script is `scripts/explorer_app.py`. It imports from a
-sibling `scripts/explorer/` package; if you're editing, this is the
+The Bokeh entry script is `demo/explorer_app.py`. It imports from a
+sibling `demo/explorer/` package; if you're editing, this is the
 "where do I look" map:
 
 | File | Holds |
 |---|---|
-| `scripts/explorer/state.py` | `_State`, `_UI`, argparse + validation helpers |
-| `scripts/explorer/context.py` | `Context` — the bundle of args/state/datasets passed to every panel |
-| `scripts/explorer/registry.py` | `configs/models.yaml` parsing + per-model metadata |
-| `scripts/explorer/loaders.py` | `.pt` / sidecar / names-JSON loading |
-| `scripts/explorer/images.py` | Pure image helpers — path resolution, opens, alpha colormaps, `pil_to_data_url` |
-| `scripts/explorer/rendering.py` | `render_heatmap_overlay`, hover thumbnails, the shared render executor, the prewarm thread |
-| `scripts/explorer/html_views.py` | `_status_html`, image-grid HTML, comparison HTML |
-| `scripts/explorer/activations.py` | `compute_patch_activations` + heatmap-reconstruction fallback (no GPU) |
-| `scripts/explorer/persistence.py` | Atomic JSON save + debounced HF dataset push |
-| `scripts/explorer/gemini.py` | "Label with Gemini" panel + API call |
-| `scripts/explorer/classifier_export.py` | "Export classifier (.py)" generator |
-| `scripts/explorer/panels/` | `feature_list`, `clip_search`, `cross_sae`, `patch_explorer`, `summary` — uniform `build(ctx)` factories |
-| `scripts/explorer_app.py` | Bokeh entry point — UMAP view, dataset switch, layout, `curdoc().add_root()` |
+| `demo/explorer/state.py` | `_State`, `_UI`, argparse + validation helpers |
+| `demo/explorer/context.py` | `Context` — the bundle of args/state/datasets passed to every panel |
+| `demo/explorer/registry.py` | `configs/models.yaml` parsing + per-model metadata |
+| `demo/explorer/loaders.py` | `.pt` / sidecar / names-JSON loading |
+| `demo/explorer/images.py` | Pure image helpers — path resolution, opens, alpha colormaps, `pil_to_data_url` |
+| `demo/explorer/rendering.py` | `render_heatmap_overlay`, hover thumbnails, the shared render executor, the prewarm thread |
+| `demo/explorer/html_views.py` | `_status_html`, image-grid HTML, comparison HTML |
+| `demo/explorer/activations.py` | `compute_patch_activations` + heatmap-reconstruction fallback (no GPU) |
+| `demo/explorer/persistence.py` | Atomic JSON save + debounced HF dataset push |
+| `demo/explorer/gemini.py` | "Label with Gemini" panel + API call |
+| `demo/explorer/classifier_export.py` | "Export classifier (.py)" generator |
+| `demo/explorer/panels/` | `feature_list`, `clip_search`, `cross_sae`, `patch_explorer`, `summary` — uniform `build(ctx)` factories |
+| `demo/explorer_app.py` | Bokeh entry point — UMAP view, dataset switch, layout, `curdoc().add_root()` |
 
 Every helper module is callable in isolation (e.g. `from explorer.html_views
 import _status_html` is fine outside Bokeh).
@@ -109,8 +109,8 @@ disable themselves or no-op silently.
 
 - **`KeyError: 'top_img_idx'`** when loading a `.pt` — the file is
   missing keys the loader requires. Check the schema in
-  `scripts/explorer/state.py` (`_State._REQUIRED`) or regenerate with
-  `scripts/build_demo_data.py`.
+  `demo/explorer/state.py` (`_State._REQUIRED`) or regenerate with
+  `demo/build_demo_data.py`.
 - **Image grid is gray** — the basenames in `image_paths` don't exist
   under `--image-dir`. Set `--extra-image-dir` to a second tree if your
   thumbnails are split.

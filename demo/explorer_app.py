@@ -12,10 +12,10 @@ All display is driven by pre-computed sidecars (_heatmaps.pt, _patch_acts.pt).
 No GPU or model weights are required at serve time.
 
 The model list (primary + compares) comes from a YAML registry — see
-``configs/models.yaml`` and ``scripts/explorer/registry.py``.
+``configs/models.yaml`` and ``demo/explorer/registry.py``.
 
 Launch:
-    bokeh serve scripts/explorer_app.py --port 5006 \
+    bokeh serve demo/explorer_app.py --port 5006 \
         --allow-websocket-origin="*" --session-token-expiration 86400 \
         --args \
           --registry  configs/models.yaml \

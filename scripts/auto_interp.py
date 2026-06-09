@@ -1,7 +1,7 @@
 """Budget-limited Gemini auto-interp for the PRIMARY registry model, synced
 with the canonical label JSONs on Hugging Face.
 
-Unlike ``auto_interp_vlm.py`` (range-based, local-only), this script:
+What it does:
 
   1. **pulls** the current ``_feature_names.json`` + ``_auto_interp.json`` for
      the primary model from the HF dataset repo (the canonical labels edited
@@ -13,8 +13,8 @@ Unlike ``auto_interp_vlm.py`` (range-based, local-only), this script:
   4. **pushes** the updated ``_auto_interp.json`` (+ ``_authors`` + ``_history``)
      back to the HF dataset repo.
 
-No GPU required. Reuses the prompt + image encoding from ``auto_interp_vlm.py``
-so the labels match the explorer's "Label with Gemini" button.
+No GPU required. Runs fully local with ``--no-push`` (and without HF_TOKEN it
+just skips the pull/push and labels everything unlabeled on disk).
 
 Environment
 -----------
@@ -31,21 +31,66 @@ token counts come from the API, so only the $/token conversion is assumed.
 """
 
 import argparse
+import io
 import json
 import os
 import sys
 import time
 
 import torch
+from PIL import Image
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _HERE)
+sys.path.insert(0, os.path.join(_HERE, '..', 'demo'))
 
 # `google.genai` is imported lazily (in the call site) so --dry-run and arg
 # parsing work in environments without the google-genai package.
-# Reuse the canonical prompt + image helpers so labels match the UI button.
-from auto_interp_vlm import _resolve_path, _encode_image, SYSTEM_PROMPT, USER_PROMPT
 from explorer.registry import load_registry
+
+
+# ---------------------------------------------------------------------------
+# Prompt + image helpers. Kept in sync with the explorer's live button
+# (demo/explorer/gemini.py) so batch labels match interactive ones; duplicated
+# rather than imported because that module pulls in Bokeh, which a headless
+# cluster node shouldn't need.
+# ---------------------------------------------------------------------------
+
+SYSTEM_PROMPT = (
+    "You are labeling features of a Sparse Autoencoder (SAE) trained on a "
+    "vision transformer. Each SAE feature is a sparse direction in activation "
+    "space that fires strongly on certain visual patterns."
+)
+
+USER_PROMPT = (
+    "The images below are the top maximally-activating images for one SAE feature. "
+    "In 2–5 words, give a precise label for the visual concept this feature detects. "
+    "Be specific — prefer 'dog snout close-up' over 'dog', or 'brick wall texture' "
+    "over 'texture'. "
+    "Reply with ONLY the label, no explanation, no punctuation at the end."
+)
+
+
+def _encode_image(path, size=224):
+    """Resize an image and return raw JPEG bytes."""
+    img = Image.open(path).convert("RGB").resize((size, size), Image.BILINEAR)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
+
+
+def _resolve_path(stored_path, image_dir, extra_image_dir):
+    """Resolve an image path the same way the explorer app does."""
+    if os.path.isabs(stored_path) and os.path.exists(stored_path):
+        return stored_path
+    basename = os.path.basename(stored_path)
+    for base in filter(None, [image_dir, extra_image_dir]):
+        candidate = os.path.join(base, basename)
+        if os.path.exists(candidate):
+            return candidate
+    # Last resort: stored path as-is
+    if os.path.exists(stored_path):
+        return stored_path
+    return None
 
 
 # ---------------------------------------------------------------------------

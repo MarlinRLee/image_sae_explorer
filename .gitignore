@@ -17,7 +17,6 @@ models/
 explorer_data/
 memory/
 .claude/
-hf_space/
 
 # Demo runtime artifacts (downloaded / generated; not source)
 local_data/

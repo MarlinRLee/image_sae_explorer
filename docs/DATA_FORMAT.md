@@ -13,9 +13,9 @@ The `.pt` files are plain `torch.save` dicts (load with
 `torch.load(path, weights_only=False)`). They are produced by
 `scripts/precompute_explorer_data.py` and `scripts/precompute_heatmaps.py`
 (see `scripts/precompute_all.sh` to run both at once). A minimal synthetic
-example is built by `scripts/build_demo_data.py` — read `_make_explorer_pt`
+example is built by `demo/build_demo_data.py` — read `_make_explorer_pt`
 there for a runnable reference, and validate any `.pt` against the registry
-with `python scripts/validate_registry.py --data-dir <dir>`.
+with `python demo/validate_registry.py --data-dir <dir>`.
 
 Shapes below use `D` = dictionary size (number of SAE features), `N` = number
 of images, `S` = number of stored image slots per feature, `P` = `patch_grid`.
@@ -47,7 +47,7 @@ whole-image response, and by localized-region response.
 
 ## `explorer_data_<name>.pt` — optional fields
 
-Absent fields are treated as `None` (see `scripts/explorer/state.py`
+Absent fields are treated as `None` (see `demo/explorer/state.py`
 `_OPTIONAL`). Older precompute outputs simply omit them.
 
 | Field | Type / shape | Meaning |
@@ -79,7 +79,7 @@ explorer recomputes heatmaps on demand (backbone + SAE inference). Built by
 ## JSON label sidecars (written at serve time)
 
 Created/updated by the explorer as you (or Gemini) name features; not part of
-precompute. Loaded by `scripts/explorer/loaders.py`. All are
+precompute. Loaded by `demo/explorer/loaders.py`. All are
 `{feature_id: value}` maps keyed by stringified feature index.
 
 | File suffix | Content |

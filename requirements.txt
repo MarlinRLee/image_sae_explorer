@@ -1,4 +1,4 @@
-# Runtime dependencies for the SAE Feature Explorer demo (scripts/explorer_app.py).
+# Runtime dependencies for the SAE Feature Explorer demo (demo/explorer_app.py).
 # These are the deps needed to LAUNCH the explorer — the training and
 # precompute pipelines additionally need requirements-pipeline.txt.
 

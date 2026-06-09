@@ -1,6 +1,6 @@
 """Dataset loading helpers for the explorer.
 
-Pulled out of ``scripts/explorer_app.py`` so that the entry script only
+Pulled out of ``demo/explorer_app.py`` so that the entry script only
 composes panels — disk I/O, JSON sidecars, and registry walking all live
 here.
 

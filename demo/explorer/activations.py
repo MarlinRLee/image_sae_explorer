@@ -20,7 +20,7 @@ import sys
 import numpy as np
 
 
-# Project layout: this file lives at scripts/explorer/, with the shared
+# Project layout: this file lives at demo/explorer/, with the shared
 # inference helpers (backbone_runners, precompute_utils) at src/. We
 # import them lazily so unit tests can exercise the panels without
 # pulling torch onto the path at module-import time.

@@ -1,7 +1,7 @@
 # SAE Feature Explorer — model registry
 #
 # Single source of truth for the demo's model list. Both the local launcher
-# and the HF Space entrypoint read this file via scripts/bootstrap_demo.py
+# and the HF Space entrypoint read this file via demo/bootstrap_demo.py
 # and the explorer reads it via --registry.
 #
 # To add a new model: append one block to `models:` (see "Add your own

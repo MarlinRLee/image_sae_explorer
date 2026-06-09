@@ -19,12 +19,12 @@ git clone https://github.com/MarlinRLee/image_sae_explorer.git
 cd image_sae_explorer
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-bash scripts/run_explorer_local.sh
+bash demo/run_local.sh
 ```
 
 Open http://localhost:5006/explorer_app.
 
-`run_explorer_local.sh` reads `configs/models.yaml`, downloads every listed
+`demo/run_local.sh` reads `configs/models.yaml`, downloads every listed
 model (`.pt` sidecar + `_heatmaps.pt` + SAE `.pth`) from the Hugging Face
 dataset repo into `./local_data/`, downloads + extracts the thumbnails tarball
 into `./local_images/`, and launches `bokeh serve` on port 5006. Re-runs skip
@@ -52,7 +52,7 @@ python sae_classifier_feat123.py my_image.jpg --threshold 0.5 --agg mean
 
 It also exposes `make_classifier()` for use as a library — a one-feature
 "export classifier" you can drop into other code. The generator lives in
-`scripts/explorer/classifier_export.py`.
+`demo/explorer/classifier_export.py`.
 
 ## Add your own SAE + data
 
@@ -100,11 +100,11 @@ dropdown picks it up. The data files behind each block follow the schema in
    on-demand heatmap and export-classifier inference trust the registry.
 5. **Validate** the registry before serving:
    ```bash
-   python scripts/validate_registry.py --data-dir local_data
+   python demo/validate_registry.py --data-dir local_data
    ```
 6. **Re-run** locally (downloads the new files, picks them up automatically):
    ```bash
-   bash scripts/run_explorer_local.sh
+   bash demo/run_local.sh
    ```
 
 ### Using a new image dataset
@@ -116,24 +116,6 @@ tarball repo is shared across all models in a registry
 (`defaults.hf_images_repo`), so change it there to swap the image source for
 everything.
 
-## Deploy to a Hugging Face Space
-
-`hf_space/` is a clone of the production Space repo (gitignored in this repo,
-so it is its own git checkout). To deploy:
-
-1. Point `hf_space/` at your own Space (one-time): create a Space, then
-   `git -C hf_space remote set-url origin https://huggingface.co/spaces/<you>/<space>`.
-2. Update `configs/models.yaml` with the models the Space should serve.
-3. Sync the canonical source into `hf_space/` and push:
-   ```bash
-   bash scripts/sync_hf_space.sh && (cd hf_space && git push)
-   ```
-
-`sync_hf_space.sh` rsyncs the **working tree** (not `HEAD`) of `scripts/`,
-`configs/`, and `src/clip_utils.py` into `hf_space/`, so uncommitted edits
-deploy. The Space bakes every registry model into its Docker image at build
-time (`hf_space/Dockerfile`) for instant cold-start.
-
 ## Optional features
 
 | Feature | Enable by | What it does |
@@ -143,13 +125,13 @@ time (`hf_space/Dockerfile`) for instant cold-start.
 | Persisted feature names | export `HF_TOKEN=...` and `HF_DATASET_REPO=Ramnie/sae-explorer-data` | Names typed into the demo are debounce-pushed to the HF dataset repo so they persist across sessions. **Without these, edits are session-local.** |
 
 All three are inert without the relevant environment variables. Export them in
-the same shell you launch from — `bash scripts/run_explorer_local.sh` inherits
+the same shell you launch from — `bash demo/run_local.sh` inherits
 the env into the bokeh subprocess:
 
 ```bash
 export GOOGLE_API_KEY=AIza...        # enables the Label with Gemini button
 export HF_TOKEN=hf_...               # enables persisted feature names
-bash scripts/run_explorer_local.sh
+bash demo/run_local.sh
 ```
 
 Add the `export` lines to `~/.bashrc` (or a project-local `.env` you `source`)
@@ -162,34 +144,34 @@ configs/
   models.yaml                # registry — single source of truth for the demo
 docs/
   DATA_FORMAT.md             # explorer_data*.pt / _heatmaps.pt schema
-scripts/
+demo/                        # everything needed to RUN the explorer
+  run_local.sh               # local launcher (calls bootstrap_demo.py)
   explorer_app.py            # Bokeh entry point (composes panels)
   explorer/                  # state, rendering, persistence, html_views, images,
                              # activations, registry, loaders, classifier_export
   explorer/panels/           # feature_list, clip_search, cross_sae,
                              # patch_explorer, summary
   bootstrap_demo.py          # registry-driven downloader + launcher
-  run_explorer_local.sh      # local launcher (calls bootstrap_demo.py)
+  build_demo_data.py         # synthetic no-download dataset (--synthetic)
+  validate_registry.py       # sanity-check models.yaml against the .pt files
+scripts/                     # data pipeline that PREPARES demo data
+  extract_activations.py     # backbone activation shards for training
   precompute_*.py            # sidecar generation pipeline
   precompute_all.sh          # chains both precompute steps for one SAE
-  extract_activations.py     # backbone activation shards for training
-  validate_registry.py       # sanity-check models.yaml against the .pt files
-  add_*.py, auto_interp_*.py # .pt enrichment (CLIP text search, interp-index
-                             # sorting, bulk Gemini labels)
-  build_demo_data.py         # synthetic no-download dataset (--synthetic)
+  add_clip_embeddings.py     # .pt enrichment — CLIP text search
+  add_interpretability_index.py  # .pt enrichment — interp-index sorting
+  auto_interp.py             # bulk Gemini labels, synced with the HF label JSONs
   upload_hf.sh               # push sidecars/weights/thumbnails to HF
-  sync_hf_space.sh           # push canonical source to the HF Space repo
-hf_space/                    # production HF Space repo (gitignored)
-src/                         # training / precompute source (separate concern)
+src/                         # SAE training + shared inference helpers
 requirements.txt             # demo runtime deps
-requirements-pipeline.txt    # extra deps for training / precompute / analysis
+requirements-pipeline.txt    # extra deps for training / precompute
 ```
 
 ## Troubleshooting
 
 - **`bokeh serve` exits with `--data-dir is not a directory`** — the registry's
   `data_file` paths are resolved relative to `--data-dir`. Run
-  `bash scripts/run_explorer_local.sh` first to populate `./local_data/`.
+  `bash demo/run_local.sh` first to populate `./local_data/`.
 - **Image grid shows gray placeholders** — `--image-dir` doesn't contain the
   basenames stored in the `.pt` file. Set `--extra-image-dir` to a second
   directory if your images live in two trees.
@@ -200,5 +182,5 @@ requirements-pipeline.txt    # extra deps for training / precompute / analysis
   that fired (`frequency > 0`), and make sure the active model's registry block
   has a `sae_file` whose name contains `_k<top_k>_`.
 - **A new model errors mid-session** — run
-  `python scripts/validate_registry.py --data-dir local_data` to catch missing
+  `python demo/validate_registry.py --data-dir local_data` to catch missing
   fields or backbone/token mismatches before serving.

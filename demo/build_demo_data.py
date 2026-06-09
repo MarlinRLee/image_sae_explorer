@@ -5,8 +5,8 @@ Generates two tiny ``.pt`` files (one without CLIP, one with), a matching
 ``models.yaml`` registry pointing at them. Lets you run the explorer
 end-to-end without any precompute pipeline:
 
-    python scripts/build_demo_data.py [output_dir]
-    bash scripts/run_explorer_local.sh --synthetic    # uses the output
+    python demo/build_demo_data.py [output_dir]
+    bash demo/run_local.sh --synthetic    # uses the output
 
 The generated tensors are deterministic (fixed seeds) so the synthetic
 data is also useful as a smoke-test fixture.
@@ -224,7 +224,7 @@ def main():
 
     print()
     print("Launch with:")
-    print(f"  bokeh serve scripts/explorer_app.py --port 5006 --args \\")
+    print(f"  bokeh serve demo/explorer_app.py --port 5006 --args \\")
     print(f"      --registry  {registry_path} \\")
     print(f"      --data-dir  {out} \\")
     print(f"      --image-dir {img_dir}")

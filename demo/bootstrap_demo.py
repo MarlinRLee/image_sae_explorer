@@ -1,26 +1,18 @@
 """Bootstrap the SAE Feature Explorer demo from a YAML registry.
 
-Single shared entry point used by both ``scripts/run_explorer_local.sh``
-and ``hf_space/entrypoint.sh``: reads ``configs/models.yaml``, downloads
-the .pt sidecars, heatmap sidecars, and SAE checkpoints from the HF
-dataset repo into ``--target``, downloads + extracts the thumbnails
-tarball into ``--image-dir``, and (with ``--launch``) execs the bokeh
-server pointed at the registry.
+Entry point behind ``demo/run_local.sh``: reads ``configs/models.yaml``,
+downloads the .pt sidecars, heatmap sidecars, and SAE checkpoints from
+the HF dataset repo into ``--target``, downloads + extracts the
+thumbnails tarball into ``--image-dir``, and (with ``--launch``) execs
+the bokeh server pointed at the registry.
 
 Idempotent: files that already exist are skipped.
 
-Examples:
+Example:
 
-    # Local
-    python scripts/bootstrap_demo.py \\
+    python demo/bootstrap_demo.py \\
         --registry configs/models.yaml \\
         --target ./local_data --image-dir ./local_images --launch
-
-    # HF Space (entrypoint.sh)
-    python scripts/bootstrap_demo.py \\
-        --registry /app/configs/models.yaml \\
-        --target /app/data --image-dir /app/images \\
-        --launch --port 7860 --app /app/scripts/explorer_app.py
 """
 
 from __future__ import annotations
@@ -133,7 +125,7 @@ def main() -> None:
                    help="After download, exec bokeh serve")
     p.add_argument('--port', type=int, default=5006)
     p.add_argument('--app', default=os.path.join(_HERE, 'explorer_app.py'),
-                   help="Path to scripts/explorer_app.py")
+                   help="Path to the explorer_app.py entry script")
     p.add_argument('--skip-images', action='store_true',
                    help="Skip thumbnail download (e.g. when --image-dir is "
                         "already populated by an outside process).")

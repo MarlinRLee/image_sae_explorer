@@ -3,7 +3,7 @@
 Shared by the two code paths that pull a model's precompute sidecars from
 the HF dataset repo:
 
-- ``scripts/bootstrap_demo.py`` — bulk download at build / first launch.
+- ``demo/bootstrap_demo.py`` — bulk download at build / first launch.
 - ``explorer.loaders.ensure_loaded`` — lazy, on-demand download of a
   *compare* model the first time it is selected from the dropdown.
 

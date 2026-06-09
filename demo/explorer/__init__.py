@@ -1,4 +1,4 @@
-"""SAE Feature Explorer — modular package backing scripts/explorer_app.py.
+"""SAE Feature Explorer — modular package backing demo/explorer_app.py.
 
 The entry script composes the pieces: per-session state and CLI parsing
 (``state``), the context object threaded into every panel (``context``),
